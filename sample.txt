@@ -1,0 +1,181 @@
+Objective (lower is better): 12.0
+
+Class: BSc_ALLIED_MEDICAL
+     P1  P2  P3                    P4  P5  P6
+Mon  -   -   Chemistry_I(Dr_Iyer)  -   -   - 
+Tue  -   -   -                     -   -   - 
+Wed  -   -   -                     -   -   - 
+Thu  -   -   -                     -   -   - 
+Fri  -   -   -                     -   -   - 
+
+Class: BSc_I
+     P1                    P2                    P3                               P4                               P5                    P6                  
+Mon  -                     Chemistry_I(Dr_Iyer)  Physics_Practical_I(Dr_Khan)     Physics_Practical_I(Dr_Khan)     Physics_I(Dr_Khan)    Math_I(Dr_Rao)      
+Tue  Chemistry_I(Dr_Iyer)  Math_I(Dr_Rao)        Physics_I(Dr_Khan)               Chemistry_I(Dr_Iyer)             -                     English_I(Dr_Sharma)
+Wed  -                     Chemistry_I(Dr_Iyer)  Chemistry_Practical_II(Dr_Iyer)  Chemistry_Practical_II(Dr_Iyer)  English_I(Dr_Sharma)  Math_I(Dr_Rao)      
+Thu  Math_I(Dr_Rao)        -                     -                                Physics_I(Dr_Khan)               Chemistry_I(Dr_Iyer)  Chemistry_I(Dr_Iyer)
+Fri  Chemistry_I(Dr_Iyer)  Chemistry_I(Dr_Iyer)  Chemistry_I(Dr_Iyer)             Physics_I(Dr_Khan)               English_I(Dr_Sharma)  Chemistry_I(Dr_Iyer)
+
+Class: BSc_II
+     P1                      P2                     P3                      P4                      P5                      P6                    
+Mon  -                       Stats_I(Dr_Rao)        -                       -                       -                       English_III(Dr_Sharma)
+Tue  CompSci_I(Prof_Mehta)   -                      -                       -                       Electronics_I(Dr_Khan)  Stats_I(Dr_Rao)       
+Wed  -                       -                      Stats_I(Dr_Rao)         Electronics_I(Dr_Khan)  CompSci_I(Prof_Mehta)   -                     
+Thu  Electronics_I(Dr_Khan)  CompSci_I(Prof_Mehta)  -                       -                       -                       -                     
+Fri  -                       CompSci_I(Prof_Mehta)  English_III(Dr_Sharma)  Stats_I(Dr_Rao)         -                       -                     
+
+Class: BSc_III
+     P1                          P2                          P3                          P4                          P5                          P6                        
+Mon  NumericalMethods(Dr_Rao)    CompSci_III(Prof_Mehta)     DataStructures(Prof_Mehta)  AdvancedChemistry(Dr_Iyer)  AdvancedChemistry(Dr_Iyer)  AdvancedChemistry(Dr_Iyer)
+Tue  -                           QuantumBasics(Dr_Khan)      AdvancedChemistry(Dr_Iyer)  CompSci_III(Prof_Mehta)     AdvancedChemistry(Dr_Iyer)  AdvancedChemistry(Dr_Iyer)
+Wed  QuantumBasics(Dr_Khan)      -                           DataStructures(Prof_Mehta)  NumericalMethods(Dr_Rao)    -                           AdvancedChemistry(Dr_Iyer)
+Thu  AdvancedChemistry(Dr_Iyer)  AdvancedChemistry(Dr_Iyer)  AdvancedChemistry(Dr_Iyer)  -                           CompSci_III(Prof_Mehta)     QuantumBasics(Dr_Khan)    
+Fri  NumericalMethods(Dr_Rao)    -                           CompSci_III(Prof_Mehta)     AdvancedChemistry(Dr_Iyer)  AdvancedChemistry(Dr_Iyer)  DataStructures(Prof_Mehta)
+
+Class: MSc_I
+     P1                      P2                            P3                      P4                            P5  P6              
+Mon  ML_I(Prof_Mehta)        -                             -                       -                             -   -               
+Tue  AdvancedMath_I(Dr_Rao)  ML_I(Prof_Mehta)              -                       -                             -   -               
+Wed  AdvancedMath_I(Dr_Rao)  -                             -                       ResearchMethods_I(Dr_Sharma)  -   ML_I(Prof_Mehta)
+Thu  -                       -                             AdvancedMath_I(Dr_Rao)  -                             -   ML_I(Prof_Mehta)
+Fri  -                       ResearchMethods_I(Dr_Sharma)  AdvancedMath_I(Dr_Rao)  -                             -   -               
+
+Class: MSc_II
+     P1                                P2                                P3                                P4                          P5                             P6                              
+Mon  -                                 -                                 -                                 -                           -                              DistributedSystems_I(Prof_Mehta)
+Tue  -                                 -                                 DistributedSystems_I(Prof_Mehta)  -                           StochasticProcesses_I(Dr_Rao)  -                               
+Wed  -                                 DistributedSystems_I(Prof_Mehta)  -                                 -                           -                              -                               
+Thu  -                                 -                                 -                                 -                           ThesisSeminar_I(Dr_Sharma)     StochasticProcesses_I(Dr_Rao)   
+Fri  DistributedSystems_I(Prof_Mehta)  StochasticProcesses_I(Dr_Rao)     -                                 ThesisSeminar_I(Dr_Sharma)  -                              -                               
+
+Teacher: Dr_Iyer
+     P1                         P2                         P3                              P4                            P5                         P6                       
+Mon  -                          BSc_I:Chemistry_I          BSc_ALLIED_MEDICAL:Chemistry_I  BSc_III:AdvancedChemistry     BSc_III:AdvancedChemistry  BSc_III:AdvancedChemistry
+Tue  BSc_I:Chemistry_I          -                          BSc_III:AdvancedChemistry       BSc_I:Chemistry_I             BSc_III:AdvancedChemistry  BSc_III:AdvancedChemistry
+Wed  -                          BSc_I:Chemistry_I          BSc_I:Chemistry_Practical_II    BSc_I:Chemistry_Practical_II  -                          BSc_III:AdvancedChemistry
+Thu  BSc_III:AdvancedChemistry  BSc_III:AdvancedChemistry  BSc_III:AdvancedChemistry       -                             BSc_I:Chemistry_I          BSc_I:Chemistry_I        
+Fri  BSc_I:Chemistry_I          BSc_I:Chemistry_I          BSc_I:Chemistry_I               BSc_III:AdvancedChemistry     BSc_III:AdvancedChemistry  BSc_I:Chemistry_I        
+
+Teacher: Dr_Khan
+     P1                     P2                     P3                         P4                         P5                    P6                   
+Mon  -                      -                      BSc_I:Physics_Practical_I  BSc_I:Physics_Practical_I  BSc_I:Physics_I       -                    
+Tue  -                      BSc_III:QuantumBasics  BSc_I:Physics_I            -                          BSc_II:Electronics_I  -                    
+Wed  BSc_III:QuantumBasics  -                      -                          BSc_II:Electronics_I       -                     -                    
+Thu  BSc_II:Electronics_I   -                      -                          BSc_I:Physics_I            -                     BSc_III:QuantumBasics
+Fri  -                      -                      -                          BSc_I:Physics_I            -                     -                    
+
+Teacher: Dr_Rao
+     P1                        P2                            P3                    P4                        P5                            P6                          
+Mon  BSc_III:NumericalMethods  BSc_II:Stats_I                -                     -                         -                             BSc_I:Math_I                
+Tue  MSc_I:AdvancedMath_I      BSc_I:Math_I                  -                     -                         MSc_II:StochasticProcesses_I  BSc_II:Stats_I              
+Wed  MSc_I:AdvancedMath_I      -                             BSc_II:Stats_I        BSc_III:NumericalMethods  -                             BSc_I:Math_I                
+Thu  BSc_I:Math_I              -                             MSc_I:AdvancedMath_I  -                         -                             MSc_II:StochasticProcesses_I
+Fri  BSc_III:NumericalMethods  MSc_II:StochasticProcesses_I  MSc_I:AdvancedMath_I  BSc_II:Stats_I            -                             -                           
+
+Teacher: Dr_Sharma
+     P1  P2                       P3                  P4                       P5                      P6                
+Mon  -   -                        -                   -                        -                       BSc_II:English_III
+Tue  -   -                        -                   -                        -                       BSc_I:English_I   
+Wed  -   -                        -                   MSc_I:ResearchMethods_I  BSc_I:English_I         -                 
+Thu  -   -                        -                   -                        MSc_II:ThesisSeminar_I  -                 
+Fri  -   MSc_I:ResearchMethods_I  BSc_II:English_III  MSc_II:ThesisSeminar_I   BSc_I:English_I         -                 
+
+Teacher: Prof_Mehta
+     P1                           P2                           P3                           P4                   P5                   P6                         
+Mon  MSc_I:ML_I                   BSc_III:CompSci_III          BSc_III:DataStructures       -                    -                    MSc_II:DistributedSystems_I
+Tue  BSc_II:CompSci_I             MSc_I:ML_I                   MSc_II:DistributedSystems_I  BSc_III:CompSci_III  -                    -                          
+Wed  -                            MSc_II:DistributedSystems_I  BSc_III:DataStructures       -                    BSc_II:CompSci_I     MSc_I:ML_I                 
+Thu  -                            BSc_II:CompSci_I             -                            -                    BSc_III:CompSci_III  MSc_I:ML_I                 
+Fri  MSc_II:DistributedSystems_I  BSc_II:CompSci_I             BSc_III:CompSci_III          -                    -                    BSc_III:DataStructures     
+
+(.venv) cponmudi@cponmudi-macOS time-table-scheduler % python timetable_solver.py --input timetable_input.sample.json --semester S1 --print_teachers
+Status: OPTIMAL
+Objective (lower is better): 12.0
+
+Class: BSc_ALLIED_MEDICAL
+     P1  P2  P3                    P4  P5  P6
+Mon  -   -   Chemistry_I(Dr_Iyer)  -   -   - 
+Tue  -   -   -                     -   -   - 
+Wed  -   -   -                     -   -   - 
+Thu  -   -   -                     -   -   - 
+Fri  -   -   -                     -   -   - 
+
+Class: BSc_I
+     P1                    P2                    P3                            P4                            P5                               P6                             
+Mon  -                     Chemistry_I(Dr_Iyer)  Physics_Practical_I(Dr_Khan)  Physics_Practical_I(Dr_Khan)  Physics_I(Dr_Khan)               Math_I(Dr_Rao)                 
+Tue  Chemistry_I(Dr_Iyer)  Math_I(Dr_Rao)        Physics_I(Dr_Khan)            Chemistry_I(Dr_Iyer)          -                                English_I(Dr_Sharma)           
+Wed  Chemistry_I(Dr_Iyer)  Chemistry_I(Dr_Iyer)  English_I(Dr_Sharma)          Math_I(Dr_Rao)                Chemistry_Practical_II(Dr_Iyer)  Chemistry_Practical_II(Dr_Iyer)
+Thu  Math_I(Dr_Rao)        -                     -                             Physics_I(Dr_Khan)            -                                Chemistry_I(Dr_Iyer)           
+Fri  Chemistry_I(Dr_Iyer)  Chemistry_I(Dr_Iyer)  Physics_I(Dr_Khan)            Chemistry_I(Dr_Iyer)          English_I(Dr_Sharma)             Chemistry_I(Dr_Iyer)           
+
+Class: BSc_II
+     P1                      P2                      P3               P4                     P5                      P6                    
+Mon  -                       Electronics_I(Dr_Khan)  -                -                      -                       English_III(Dr_Sharma)
+Tue  -                       -                       -                CompSci_I(Prof_Mehta)  -                       Stats_I(Dr_Rao)       
+Wed  -                       CompSci_I(Prof_Mehta)   Stats_I(Dr_Rao)  -                      Electronics_I(Dr_Khan)  -                     
+Thu  English_III(Dr_Sharma)  -                       -                CompSci_I(Prof_Mehta)  -                       Stats_I(Dr_Rao)       
+Fri  -                       Electronics_I(Dr_Khan)  -                Stats_I(Dr_Rao)        -                       CompSci_I(Prof_Mehta) 
+
+Class: BSc_III
+     P1                          P2                          P3                          P4                          P5                          P6                        
+Mon  AdvancedChemistry(Dr_Iyer)  CompSci_III(Prof_Mehta)     NumericalMethods(Dr_Rao)    -                           -                           DataStructures(Prof_Mehta)
+Tue  QuantumBasics(Dr_Khan)      AdvancedChemistry(Dr_Iyer)  AdvancedChemistry(Dr_Iyer)  -                           AdvancedChemistry(Dr_Iyer)  CompSci_III(Prof_Mehta)   
+Wed  NumericalMethods(Dr_Rao)    QuantumBasics(Dr_Khan)      AdvancedChemistry(Dr_Iyer)  AdvancedChemistry(Dr_Iyer)  -                           CompSci_III(Prof_Mehta)   
+Thu  AdvancedChemistry(Dr_Iyer)  AdvancedChemistry(Dr_Iyer)  AdvancedChemistry(Dr_Iyer)  AdvancedChemistry(Dr_Iyer)  AdvancedChemistry(Dr_Iyer)  DataStructures(Prof_Mehta)
+Fri  -                           DataStructures(Prof_Mehta)  AdvancedChemistry(Dr_Iyer)  CompSci_III(Prof_Mehta)     QuantumBasics(Dr_Khan)      NumericalMethods(Dr_Rao)  
+
+Class: MSc_I
+     P1                      P2                      P3                      P4                            P5                            P6
+Mon  AdvancedMath_I(Dr_Rao)  -                       -                       -                             ML_I(Prof_Mehta)              - 
+Tue  AdvancedMath_I(Dr_Rao)  ML_I(Prof_Mehta)        -                       -                             -                             - 
+Wed  -                       AdvancedMath_I(Dr_Rao)  -                       ML_I(Prof_Mehta)              ResearchMethods_I(Dr_Sharma)  - 
+Thu  ML_I(Prof_Mehta)        -                       AdvancedMath_I(Dr_Rao)  -                             -                             - 
+Fri  -                       -                       -                       ResearchMethods_I(Dr_Sharma)  -                             - 
+
+Class: MSc_II
+     P1                                P2                             P3                                P4                                P5                                P6                           
+Mon  -                                 StochasticProcesses_I(Dr_Rao)  -                                 DistributedSystems_I(Prof_Mehta)  -                                 -                            
+Tue  DistributedSystems_I(Prof_Mehta)  -                              -                                 StochasticProcesses_I(Dr_Rao)     -                                 -                            
+Wed  ThesisSeminar_I(Dr_Sharma)        -                              -                                 -                                 DistributedSystems_I(Prof_Mehta)  StochasticProcesses_I(Dr_Rao)
+Thu  -                                 -                              -                                 -                                 -                                 -                            
+Fri  -                                 ThesisSeminar_I(Dr_Sharma)     DistributedSystems_I(Prof_Mehta)  -                                 -                                 -                            
+
+Teacher: Dr_Iyer
+     P1                         P2                         P3                              P4                         P5                            P6                          
+Mon  BSc_III:AdvancedChemistry  BSc_I:Chemistry_I          BSc_ALLIED_MEDICAL:Chemistry_I  -                          -                             -                           
+Tue  BSc_I:Chemistry_I          BSc_III:AdvancedChemistry  BSc_III:AdvancedChemistry       BSc_I:Chemistry_I          BSc_III:AdvancedChemistry     -                           
+Wed  BSc_I:Chemistry_I          BSc_I:Chemistry_I          BSc_III:AdvancedChemistry       BSc_III:AdvancedChemistry  BSc_I:Chemistry_Practical_II  BSc_I:Chemistry_Practical_II
+Thu  BSc_III:AdvancedChemistry  BSc_III:AdvancedChemistry  BSc_III:AdvancedChemistry       BSc_III:AdvancedChemistry  BSc_III:AdvancedChemistry     BSc_I:Chemistry_I           
+Fri  BSc_I:Chemistry_I          BSc_I:Chemistry_I          BSc_III:AdvancedChemistry       BSc_I:Chemistry_I          -                             BSc_I:Chemistry_I           
+
+Teacher: Dr_Khan
+     P1                     P2                     P3                         P4                         P5                     P6
+Mon  -                      BSc_II:Electronics_I   BSc_I:Physics_Practical_I  BSc_I:Physics_Practical_I  BSc_I:Physics_I        - 
+Tue  BSc_III:QuantumBasics  -                      BSc_I:Physics_I            -                          -                      - 
+Wed  -                      BSc_III:QuantumBasics  -                          -                          BSc_II:Electronics_I   - 
+Thu  -                      -                      -                          BSc_I:Physics_I            -                      - 
+Fri  -                      BSc_II:Electronics_I   BSc_I:Physics_I            -                          BSc_III:QuantumBasics  - 
+
+Teacher: Dr_Rao
+     P1                        P2                            P3                        P4                            P5  P6                          
+Mon  MSc_I:AdvancedMath_I      MSc_II:StochasticProcesses_I  BSc_III:NumericalMethods  -                             -   BSc_I:Math_I                
+Tue  MSc_I:AdvancedMath_I      BSc_I:Math_I                  -                         MSc_II:StochasticProcesses_I  -   BSc_II:Stats_I              
+Wed  BSc_III:NumericalMethods  MSc_I:AdvancedMath_I          BSc_II:Stats_I            BSc_I:Math_I                  -   MSc_II:StochasticProcesses_I
+Thu  BSc_I:Math_I              -                             MSc_I:AdvancedMath_I      -                             -   BSc_II:Stats_I              
+Fri  -                         -                             -                         BSc_II:Stats_I                -   BSc_III:NumericalMethods    
+
+Teacher: Dr_Sharma
+     P1                      P2                      P3               P4                       P5                       P6                
+Mon  -                       -                       -                -                        -                        BSc_II:English_III
+Tue  -                       -                       -                -                        -                        BSc_I:English_I   
+Wed  MSc_II:ThesisSeminar_I  -                       BSc_I:English_I  -                        MSc_I:ResearchMethods_I  -                 
+Thu  BSc_II:English_III      -                       -                -                        -                        -                 
+Fri  -                       MSc_II:ThesisSeminar_I  -                MSc_I:ResearchMethods_I  BSc_I:English_I          -                 
+
+Teacher: Prof_Mehta
+     P1                           P2                      P3                           P4                           P5                           P6                    
+Mon  -                            BSc_III:CompSci_III     -                            MSc_II:DistributedSystems_I  MSc_I:ML_I                   BSc_III:DataStructures
+Tue  MSc_II:DistributedSystems_I  MSc_I:ML_I              -                            BSc_II:CompSci_I             -                            BSc_III:CompSci_III   
+Wed  -                            BSc_II:CompSci_I        -                            MSc_I:ML_I                   MSc_II:DistributedSystems_I  BSc_III:CompSci_III   
+Thu  MSc_I:ML_I                   -                       -                            BSc_II:CompSci_I             -                            BSc_III:DataStructures
+Fri  -                            BSc_III:DataStructures  MSc_II:DistributedSystems_I  BSc_III:CompSci_III          -                            BSc_II:CompSci_I      

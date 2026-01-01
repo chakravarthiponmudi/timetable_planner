@@ -33,7 +33,7 @@ def new_data() -> Dict[str, Any]:
     return {
         "constraints": {
             # omit min_classes_per_week by default (user can set it)
-            "max_sessions_per_day_by_tag": {},
+            "max_periods_per_day_by_tag": {},
         },
         "calendar": {"days": ["Mon", "Tue", "Wed", "Thu", "Fri"], "periods": ["P1", "P2", "P3", "P4", "P5"]},
         "classes": [],
@@ -42,9 +42,13 @@ def new_data() -> Dict[str, Any]:
 
 def _ensure_class_shape(c: Dict[str, Any]) -> None:
     c.setdefault("semesters", {})
-    for sem in SEMESTERS:
-        c["semesters"].setdefault(sem, {})
-        c["semesters"][sem].setdefault("subjects", [])
+    # Do NOT auto-create both semesters. The solver supports one-semester classes by omitting the other semester.
+    # Ensure any existing semesters have a subjects array.
+    semesters = c.get("semesters", {}) or {}
+    if isinstance(semesters, dict):
+        for sem, sem_obj in semesters.items():
+            if isinstance(sem_obj, dict):
+                sem_obj.setdefault("subjects", [])
 
 
 def _validate_for_save(data: Dict[str, Any]) -> None:
@@ -68,8 +72,14 @@ def _validate_for_save(data: Dict[str, Any]) -> None:
 
     for c in classes:
         _ensure_class_shape(c)
-        for sem in SEMESTERS:
-            subjects = ((c.get("semesters", {}).get(sem, {}) or {}).get("subjects", []) or [])
+        semesters = c.get("semesters", {}) or {}
+        if not isinstance(semesters, dict) or not semesters:
+            raise ValueError(f"Class '{c.get('name')}' must define at least one semester.")
+
+        for sem, sem_obj in semesters.items():
+            if not isinstance(sem, str) or not sem.strip():
+                raise ValueError(f"Class '{c.get('name')}' has an invalid semester key.")
+            subjects = ((sem_obj or {}).get("subjects", []) or [])
             if not isinstance(subjects, list) or not subjects:
                 raise ValueError(f"Class '{c.get('name')}' semester '{sem}' must have at least one subject.")
             for s in subjects:
@@ -77,10 +87,10 @@ def _validate_for_save(data: Dict[str, Any]) -> None:
                     raise ValueError(f"Invalid subject entry in class '{c.get('name')}' {sem}.")
                 if not (s.get("name") and s.get("teacher")):
                     raise ValueError(f"Each subject must have name and teacher (class '{c.get('name')}' {sem}).")
-                spw = s.get("sessions_per_week")
-                if not isinstance(spw, int) or spw <= 0:
+                ppw = s.get("periods_per_week", s.get("sessions_per_week"))
+                if not isinstance(ppw, int) or ppw <= 0:
                     raise ValueError(
-                        f"sessions_per_week must be a positive int for subject '{s.get('name')}' (class '{c.get('name')}' {sem})."
+                        f"periods_per_week must be a positive int for subject '{s.get('name')}' (class '{c.get('name')}' {sem})."
                     )
                 min_cp = int(s.get("min_contiguous_periods", 1))
                 max_cp = int(s.get("max_contiguous_periods", min_cp))
@@ -98,7 +108,7 @@ def _validate_for_save(data: Dict[str, Any]) -> None:
 class SubjectDraft:
     name: str
     teacher: str
-    sessions_per_week: int
+    periods_per_week: int
     min_contiguous_periods: int = 1
     max_contiguous_periods: int = 1
     tags_csv: str = ""
@@ -107,7 +117,7 @@ class SubjectDraft:
         out: Dict[str, Any] = {
             "name": self.name.strip(),
             "teacher": self.teacher.strip(),
-            "sessions_per_week": int(self.sessions_per_week),
+            "periods_per_week": int(self.periods_per_week),
         }
         if int(self.min_contiguous_periods) != 1:
             out["min_contiguous_periods"] = int(self.min_contiguous_periods)
@@ -237,11 +247,11 @@ def main() -> None:
                         st.success(f"Cleared override for {sel_cls}.")
 
         st.divider()
-        st.write("Max sessions per day by tag: `constraints.max_sessions_per_day_by_tag`")
-        by_tag = constraints.get("max_sessions_per_day_by_tag", {}) or {}
+        st.write("Max periods per day by tag: `constraints.max_periods_per_day_by_tag`")
+        by_tag = constraints.get("max_periods_per_day_by_tag", constraints.get("max_sessions_per_day_by_tag", {})) or {}
         if not isinstance(by_tag, dict):
             by_tag = {}
-            constraints["max_sessions_per_day_by_tag"] = by_tag
+            constraints["max_periods_per_day_by_tag"] = by_tag
 
         tag_col1, tag_col2, tag_col3 = st.columns([2, 1, 1])
         with tag_col1:
@@ -307,8 +317,17 @@ def main() -> None:
                     st.warning("Selected class not found (state changed).")
                 else:
                     _ensure_class_shape(cobj)
-                    sem = st.radio("Semester", options=list(SEMESTERS), horizontal=True)
-                    subjects = cobj["semesters"][sem]["subjects"]
+                    semesters = cobj.setdefault("semesters", {})
+                    # Ensure at least S1 exists so the user can add subjects.
+                    if not semesters:
+                        semesters["S1"] = {"subjects": []}
+                    for sem_key, sem_obj in list(semesters.items()):
+                        if isinstance(sem_obj, dict):
+                            sem_obj.setdefault("subjects", [])
+
+                    available = [s for s in SEMESTERS if s in semesters]
+                    sem = st.radio("Semester", options=available, horizontal=True)
+                    subjects = semesters[sem]["subjects"]
 
                     st.markdown(f"**Subjects for {selected} / {sem}**")
                     if subjects:
@@ -323,7 +342,7 @@ def main() -> None:
                         s_name = st.text_input("Subject name", value="", key=f"sname_{selected}_{sem}")
                         s_teacher = st.text_input("Teacher", value="", key=f"steacher_{selected}_{sem}")
                     with col2:
-                        s_spw = st.number_input("Sessions per week", min_value=1, step=1, value=1, key=f"ssp_{selected}_{sem}")
+                        s_spw = st.number_input("Periods per week", min_value=1, step=1, value=1, key=f"ssp_{selected}_{sem}")
                         s_min = st.number_input("Min contiguous", min_value=1, step=1, value=1, key=f"smin_{selected}_{sem}")
                     with col3:
                         s_max = st.number_input("Max contiguous", min_value=1, step=1, value=1, key=f"smax_{selected}_{sem}")
@@ -333,7 +352,7 @@ def main() -> None:
                         draft = SubjectDraft(
                             name=s_name,
                             teacher=s_teacher,
-                            sessions_per_week=int(s_spw),
+                            periods_per_week=int(s_spw),
                             min_contiguous_periods=int(s_min),
                             max_contiguous_periods=int(s_max),
                             tags_csv=s_tags,

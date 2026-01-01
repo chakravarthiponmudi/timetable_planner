@@ -8,8 +8,8 @@ from ortools.sat.python import cp_model
 
 @dataclass(frozen=True)
 class FixedSessionSpec:
-    day: str
     period: str
+    day: Optional[str] = None
     duration: Optional[int] = None
 
 
@@ -17,7 +17,7 @@ class FixedSessionSpec:
 class SubjectSpec:
     name: str
     teacher: str
-    sessions_per_week: int
+    periods_per_week: int
     min_contiguous_periods: int = 1
     max_contiguous_periods: int = 1
     tags: Tuple[str, ...] = ()
@@ -65,17 +65,24 @@ def _get_min_classes_per_week_constraints(data: dict) -> Tuple[Optional[int], Di
     return global_min, dict(by_class)
 
 
-def _get_max_sessions_per_day_by_tag_constraints(data: dict) -> Dict[str, int]:
+def _get_max_periods_per_day_by_tag_constraints(data: dict) -> Dict[str, int]:
+    # Backward-compatible reader: prefer the new period-based key, but accept the old one too.
+    # New: constraints.max_periods_per_day_by_tag  (period-count, based on occ_subj)
+    # Old: constraints.max_sessions_per_day_by_tag (session/block-count, based on y starts)
+    # We return a dict of tag->limit in PERIODS. If the old key is used, we still treat the limit as PERIODS
+    # (so users don't accidentally configure "sessions" thinking they're periods).
     constraints = data.get("constraints", {}) or {}
-    by_tag = constraints.get("max_sessions_per_day_by_tag", {}) or {}
+    by_tag = constraints.get("max_periods_per_day_by_tag", None)
+    if by_tag is None:
+        by_tag = constraints.get("max_sessions_per_day_by_tag", {}) or {}
     if not isinstance(by_tag, dict):
-        raise ValueError("constraints.max_sessions_per_day_by_tag must be an object/map if provided")
+        raise ValueError("constraints.max_periods_per_day_by_tag must be an object/map if provided")
     out: Dict[str, int] = {}
     for tag, limit in by_tag.items():
         if not isinstance(tag, str) or not tag.strip():
-            raise ValueError("constraints.max_sessions_per_day_by_tag keys must be non-empty strings")
+            raise ValueError("constraints.max_periods_per_day_by_tag keys must be non-empty strings")
         if not isinstance(limit, int) or limit < 0:
-            raise ValueError(f"constraints.max_sessions_per_day_by_tag['{tag}'] must be a non-negative int")
+            raise ValueError(f"constraints.max_periods_per_day_by_tag['{tag}'] must be a non-negative int")
         out[tag.strip()] = limit
     return out
 
@@ -121,7 +128,8 @@ def _extract_specs(data: dict, semester: str) -> Tuple[List[ClassSemesterSpec], 
         for s in subjects:
             subj_name = s.get("name")
             teacher = s.get("teacher")
-            spw = s.get("sessions_per_week")
+            ppw = s.get("periods_per_week")
+            spw = s.get("sessions_per_week")  # backward-compat (see below)
             min_cp = s.get("min_contiguous_periods", 1)
             max_cp = s.get("max_contiguous_periods", min_cp)
             tags = s.get("tags", [])
@@ -131,10 +139,21 @@ def _extract_specs(data: dict, semester: str) -> Tuple[List[ClassSemesterSpec], 
                 raise ValueError(
                     f"class '{class_name}' semester '{semester}': each subject needs 'name' and 'teacher'"
                 )
-            if not isinstance(spw, int) or spw <= 0:
+            # periods_per_week is the primary unit. For backward-compat:
+            # - if periods_per_week is missing and sessions_per_week is present, allow it only for 1-period lectures
+            #   (min=max=1), where sessions == periods.
+            if ppw is None and spw is not None:
+                if min_cp == 1 and max_cp == 1:
+                    ppw = spw
+                else:
+                    raise ValueError(
+                        f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
+                        f"use 'periods_per_week' (not 'sessions_per_week') for multi-period blocks"
+                    )
+            if not isinstance(ppw, int) or ppw <= 0:
                 raise ValueError(
                     f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
-                    f"'sessions_per_week' must be a positive int"
+                    f"'periods_per_week' must be a positive int"
                 )
             if not isinstance(min_cp, int) or not isinstance(max_cp, int) or min_cp <= 0 or max_cp <= 0:
                 raise ValueError(
@@ -189,25 +208,36 @@ def _extract_specs(data: dict, semester: str) -> Tuple[List[ClassSemesterSpec], 
                     raise ValueError(
                         f"class '{class_name}' semester '{semester}' subject '{subj_name}': fixed_sessions entries must be objects"
                     )
-                day = fs.get("day")
                 period = fs.get("period")
+                day = fs.get("day", None)
                 duration = fs.get("duration", None)
-                if not isinstance(day, str) or not day.strip() or not isinstance(period, str) or not period.strip():
+                if not isinstance(period, str) or not period.strip():
                     raise ValueError(
                         f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
-                        f"fixed_sessions entries require non-empty 'day' and 'period'"
+                        f"fixed_sessions entries require non-empty 'period' (day is optional)"
+                    )
+                if day is not None and (not isinstance(day, str) or not day.strip()):
+                    raise ValueError(
+                        f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
+                        f"fixed_sessions.day must be a non-empty string if provided"
                     )
                 if duration is not None and (not isinstance(duration, int) or duration <= 0):
                     raise ValueError(
                         f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
                         f"fixed_sessions.duration must be a positive int if provided"
                     )
-                cleaned_fixed.append(FixedSessionSpec(day=day.strip(), period=period.strip(), duration=duration))
+                cleaned_fixed.append(
+                    FixedSessionSpec(
+                        day=day.strip() if isinstance(day, str) else None,
+                        period=period.strip(),
+                        duration=duration,
+                    )
+                )
             specs.append(
                 SubjectSpec(
                     name=subj_name,
                     teacher=teacher,
-                    sessions_per_week=spw,
+                    periods_per_week=ppw,
                     min_contiguous_periods=min_cp,
                     max_contiguous_periods=max_cp,
                     tags=tuple(cleaned_tags),
@@ -235,7 +265,7 @@ def solve_timetable(
     periods: List[str],
     min_classes_per_week: Optional[int],
     min_classes_per_week_by_class: Dict[str, int],
-    max_sessions_per_day_by_tag: Dict[str, int],
+    max_periods_per_day_by_tag: Dict[str, int],
     time_limit_s: float,
 ) -> Tuple[cp_model.CpSolver, int, dict]:
     model = cp_model.CpModel()
@@ -283,18 +313,23 @@ def solve_timetable(
 
     # Sanity: ensure each class has enough slots for its required sessions
     for cs in specs:
-        # Lower bound needed periods/week (each session consumes at least min_contiguous_periods).
-        min_periods_needed = sum(subj.sessions_per_week * subj.min_contiguous_periods for subj in cs.subjects)
-        if min_periods_needed > num_slots:
+        # Exact periods needed/week now come directly from periods_per_week.
+        total_periods_needed = sum(subj.periods_per_week for subj in cs.subjects)
+        if total_periods_needed > num_slots:
             raise ValueError(
-                f"class '{cs.class_name}' semester '{cs.semester}' needs at least {min_periods_needed} periods/week "
-                f"(based on sessions_per_week * min_contiguous_periods), but calendar only has {num_slots} slots/week"
+                f"class '{cs.class_name}' semester '{cs.semester}' needs {total_periods_needed} periods/week "
+                f"(based on periods_per_week), but calendar only has {num_slots} slots/week"
             )
         for subj in cs.subjects:
             if subj.min_contiguous_periods > num_periods or subj.max_contiguous_periods > num_periods:
                 raise ValueError(
                     f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
                     f"contiguous periods cannot exceed periods/day ({num_periods})"
+                )
+            if subj.periods_per_week < subj.min_contiguous_periods:
+                raise ValueError(
+                    f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
+                    f"periods_per_week ({subj.periods_per_week}) must be >= min_contiguous_periods ({subj.min_contiguous_periods})"
                 )
             # Ensure there is at least one feasible start within a day.
             has_any = any(
@@ -342,18 +377,18 @@ def solve_timetable(
             p = period_to_idx[period_name]
             model.Add(occ[(cs.class_name, d, p)] == 0)
 
-    # Constraint: each subject gets exactly sessions_per_week sessions (count sessions/blocks, not periods)
+    # Constraint: each subject gets exactly periods_per_week periods (counting occupied periods).
     for cs in specs:
         for subj in cs.subjects:
             model.Add(
                 sum(
-                    y[(cs.class_name, subj.name, d, start, dur)]
+                    dur * y[(cs.class_name, subj.name, d, start, dur)]
                     for d in range(num_days)
                     for start in range(num_periods)
                     for dur in range(subj.min_contiguous_periods, subj.max_contiguous_periods + 1)
                     if (cs.class_name, subj.name, d, start, dur) in y
                 )
-                == subj.sessions_per_week
+                == subj.periods_per_week
             )
 
     # Optional subject-level allowed start slots (restrict when a session may start)
@@ -391,18 +426,23 @@ def solve_timetable(
             if not subj.fixed_sessions:
                 continue
             for fs in subj.fixed_sessions:
-                if fs.day not in day_to_idx:
-                    raise ValueError(
-                        f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
-                        f"fixed_sessions day '{fs.day}' is not in calendar.days"
-                    )
                 if fs.period not in period_to_idx:
                     raise ValueError(
                         f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
                         f"fixed_sessions period '{fs.period}' is not in calendar.periods"
                     )
-                d = day_to_idx[fs.day]
                 start = period_to_idx[fs.period]
+                days_to_consider: List[int]
+                if fs.day is None:
+                    # Day omitted => allow any day, but force the fixed start to happen on exactly one day.
+                    days_to_consider = list(range(num_days))
+                else:
+                    if fs.day not in day_to_idx:
+                        raise ValueError(
+                            f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
+                            f"fixed_sessions day '{fs.day}' is not in calendar.days"
+                        )
+                    days_to_consider = [day_to_idx[fs.day]]
 
                 if fs.duration is not None:
                     dur = fs.duration
@@ -414,39 +454,44 @@ def solve_timetable(
                     if start + dur > num_periods:
                         raise ValueError(
                             f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
-                            f"fixed_sessions ({fs.day} {fs.period}) with duration {dur} does not fit in the day"
+                            f"fixed_sessions ({fs.day or '*'} {fs.period}) with duration {dur} does not fit in the day"
                         )
-                    key = (cs.class_name, subj.name, d, start, dur)
-                    if key not in y:
-                        raise ValueError(
-                            f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
-                            f"fixed_sessions ({fs.day} {fs.period}, dur={dur}) is not a valid start/duration"
-                        )
-                    model.Add(y[key] == 1)
-                else:
-                    # Duration not specified: force "a session starts here" with any allowed duration.
                     candidates = []
-                    for dur in range(subj.min_contiguous_periods, subj.max_contiguous_periods + 1):
+                    for d in days_to_consider:
                         key = (cs.class_name, subj.name, d, start, dur)
                         if key in y:
                             candidates.append(y[key])
                     if not candidates:
                         raise ValueError(
                             f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
-                            f"fixed_sessions ({fs.day} {fs.period}) has no feasible duration"
+                            f"fixed_sessions ({fs.day or '*'} {fs.period}, dur={dur}) is not a valid start/duration"
+                        )
+                    model.Add(sum(candidates) == 1)
+                else:
+                    # Duration not specified: force "a session starts here" with any allowed duration.
+                    candidates = []
+                    for d in days_to_consider:
+                        for dur in range(subj.min_contiguous_periods, subj.max_contiguous_periods + 1):
+                            key = (cs.class_name, subj.name, d, start, dur)
+                            if key in y:
+                                candidates.append(y[key])
+                    if not candidates:
+                        raise ValueError(
+                            f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
+                            f"fixed_sessions ({fs.day or '*'} {fs.period}) has no feasible duration"
                         )
                     model.Add(sum(candidates) == 1)
 
-    # Optional constraint: limit number of sessions per day by subject "tag".
-    # Example: {"practical": 1} => no more than one practical session per class per day.
-    if max_sessions_per_day_by_tag:
+    # Optional constraint: limit number of PERIODS per day by subject "tag".
+    # Example: {"practical": 3} => at most 3 practical periods per class per day (usually implies <=1 practical block/day).
+    if max_periods_per_day_by_tag:
         for cs in specs:
             subjects_by_tag: Dict[str, List[SubjectSpec]] = {}
             for subj in cs.subjects:
                 for tag in subj.tags:
                     subjects_by_tag.setdefault(tag, []).append(subj)
 
-            for tag, limit in max_sessions_per_day_by_tag.items():
+            for tag, limit in max_periods_per_day_by_tag.items():
                 if limit is None:
                     continue
                 tagged_subjects = subjects_by_tag.get(tag, [])
@@ -455,11 +500,9 @@ def solve_timetable(
                 for d in range(num_days):
                     model.Add(
                         sum(
-                            y[(cs.class_name, subj.name, d, start, dur)]
+                            occ_subj[(cs.class_name, subj.name, d, p)]
                             for subj in tagged_subjects
-                            for start in range(num_periods)
-                            for dur in range(subj.min_contiguous_periods, subj.max_contiguous_periods + 1)
-                            if (cs.class_name, subj.name, d, start, dur) in y
+                            for p in range(num_periods)
                         )
                         <= limit
                     )
@@ -506,8 +549,9 @@ def solve_timetable(
                     <= 1
                 )
 
-    # Soft constraint: discourage having the same subject twice on the same day for a class.
-    # We do this by counting (sessions_per_day - 1)+ as "excess" and minimizing it.
+    # Soft constraint: discourage having the same subject start twice on the same day for a class.
+    # This keeps lectures typically <=1/day; for practicals it also discourages multiple blocks/day.
+    # We count "starts per day" and penalize anything beyond 1.
     penalties: List[cp_model.IntVar] = []
     for cs in specs:
         for subj in cs.subjects:
@@ -643,7 +687,7 @@ def main() -> None:
     data = _load_input(args.input)
     days, periods = _get_calendar(data)
     min_classes_per_week, min_classes_per_week_by_class = _get_min_classes_per_week_constraints(data)
-    max_sessions_per_day_by_tag = _get_max_sessions_per_day_by_tag_constraints(data)
+    max_periods_per_day_by_tag = _get_max_periods_per_day_by_tag_constraints(data)
     specs, skipped = _extract_specs(data, args.semester)
     if skipped:
         print(f"Note: skipping classes without semester '{args.semester}': {', '.join(skipped)}")
@@ -657,7 +701,7 @@ def main() -> None:
         periods=periods,
         min_classes_per_week=min_classes_per_week,
         min_classes_per_week_by_class=min_classes_per_week_by_class,
-        max_sessions_per_day_by_tag=max_sessions_per_day_by_tag,
+        max_periods_per_day_by_tag=max_periods_per_day_by_tag,
         time_limit_s=args.time_limit_s,
     )
 

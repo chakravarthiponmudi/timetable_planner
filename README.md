@@ -6,7 +6,7 @@ This repo contains a simple **college timetable generator** built with **Google 
 
 - Multiple classes (e.g., `BSc_I`, `BSc_II`, `BSc_III`, `MSc_I`, `MSc_II`)
 - Two semesters per class (`S1`, `S2`) — you solve **one semester at a time**
-- Weekly lecture counts per subject (`sessions_per_week`)
+- Weekly load per subject in **periods** (`periods_per_week`)
 - Practical/lab blocks with **contiguous periods** (e.g., 2–3 periods continuous)
 - Teacher collision constraint: **a teacher cannot teach two classes in the same slot**
 - No room constraints (as requested)
@@ -125,7 +125,7 @@ At a minimum:
 - `classes[].semesters.S1.subjects[]` and `classes[].semesters.S2.subjects[]`
   - `name` (subject name)
   - `teacher` (teacher/prof name)
-  - `sessions_per_week` (positive integer)
+  - `periods_per_week` (positive integer)
   - `min_contiguous_periods` (optional, default `1`)
   - `max_contiguous_periods` (optional, default `min_contiguous_periods`)
 
@@ -133,7 +133,7 @@ Optional constraints:
 
 - `constraints.min_classes_per_week`: non-negative int, applies to all classes
 - `constraints.min_classes_per_week_by_class`: map of class name -> non-negative int (overrides global for those classes)
-- `constraints.max_sessions_per_day_by_tag`: map of tag -> non-negative int (limits how many sessions with that tag can occur per class per day)
+- `constraints.max_periods_per_day_by_tag`: map of tag -> non-negative int (limits how many *periods* with that tag can occur per class per day)
 
 Optional subject fields:
 
@@ -141,6 +141,7 @@ Optional subject fields:
 - `allowed_starts`: array of `{ "day": "Mon", "period": "P2" }` objects (restricts which day/period a session may start)
 - `fixed_sessions`: array of `{ "day": "Mon", "period": "P2", "duration": 1 }` objects
   - If `duration` is omitted, the solver will force a session to start there with any duration in `[min_contiguous_periods, max_contiguous_periods]`.
+  - If `day` is omitted, the solver will force a session to start at that `period` on **exactly one** day of the week.
 
 Optional class/semester fields:
 

@@ -6,15 +6,15 @@ Schema (high-level):
   "constraints": {
     "min_classes_per_week": int?,
     "min_classes_per_week_by_class": { "<class_name>": int }?,
-    "max_sessions_per_day_by_tag": { "<tag>": int }?
+    "max_periods_per_day_by_tag": { "<tag>": int }?
   },
   "calendar": { "days": [str], "periods": [str] },
   "classes": [
     {
       "name": str,
       "semesters": {
-        "S1": { "subjects": [ ... ] },
-        "S2": { "subjects": [ ... ] }
+        "S1": { "subjects": [ ... ] }?,
+        "S2": { "subjects": [ ... ] }?
       }
     }
   ]
@@ -58,7 +58,7 @@ def _format_csv_list(items: List[str]) -> str:
 class SubjectRow:
     name: str
     teacher: str
-    sessions_per_week: int
+    periods_per_week: int
     min_contiguous_periods: int = 1
     max_contiguous_periods: int = 1
     tags: List[str] = None  # type: ignore[assignment]
@@ -67,7 +67,7 @@ class SubjectRow:
         out: Dict[str, Any] = {
             "name": self.name,
             "teacher": self.teacher,
-            "sessions_per_week": int(self.sessions_per_week),
+            "periods_per_week": int(self.periods_per_week),
         }
         if int(self.min_contiguous_periods) != 1:
             out["min_contiguous_periods"] = int(self.min_contiguous_periods)
@@ -83,7 +83,7 @@ class SubjectRow:
         return SubjectRow(
             name=str(d.get("name") or ""),
             teacher=str(d.get("teacher") or ""),
-            sessions_per_week=int(d.get("sessions_per_week") or 0),
+            periods_per_week=int(d.get("periods_per_week") or d.get("sessions_per_week") or 0),
             min_contiguous_periods=int(d.get("min_contiguous_periods") or 1),
             max_contiguous_periods=int(d.get("max_contiguous_periods") or (d.get("min_contiguous_periods") or 1)),
             tags=list(d.get("tags") or []),
@@ -97,14 +97,14 @@ class SubjectDialog(tk.Toplevel):
         self.resizable(False, False)
         self.result: Optional[SubjectRow] = None
 
-        initial = initial or SubjectRow(name="", teacher="", sessions_per_week=1, min_contiguous_periods=1, max_contiguous_periods=1, tags=[])
+        initial = initial or SubjectRow(name="", teacher="", periods_per_week=1, min_contiguous_periods=1, max_contiguous_periods=1, tags=[])
 
         frm = ttk.Frame(self, padding=12)
         frm.grid(row=0, column=0, sticky="nsew")
 
         self.var_name = tk.StringVar(value=initial.name)
         self.var_teacher = tk.StringVar(value=initial.teacher)
-        self.var_spw = tk.StringVar(value=str(initial.sessions_per_week))
+        self.var_spw = tk.StringVar(value=str(initial.periods_per_week))
         self.var_min_cp = tk.StringVar(value=str(initial.min_contiguous_periods))
         self.var_max_cp = tk.StringVar(value=str(initial.max_contiguous_periods))
         self.var_tags = tk.StringVar(value=_format_csv_list(list(initial.tags or [])))
@@ -115,7 +115,7 @@ class SubjectDialog(tk.Toplevel):
 
         add_row(0, "Subject name*", self.var_name)
         add_row(1, "Teacher*", self.var_teacher)
-        add_row(2, "Sessions per week*", self.var_spw)
+        add_row(2, "Periods per week*", self.var_spw)
         add_row(3, "Min contiguous periods", self.var_min_cp)
         add_row(4, "Max contiguous periods", self.var_max_cp)
         add_row(5, "Tags (comma-separated)", self.var_tags)
@@ -147,7 +147,7 @@ class SubjectDialog(tk.Toplevel):
                 raise ValueError("Teacher is required.")
             spw = int((self.var_spw.get() or "").strip())
             if spw <= 0:
-                raise ValueError("Sessions per week must be a positive integer.")
+                raise ValueError("Periods per week must be a positive integer.")
             min_cp = int((self.var_min_cp.get() or "1").strip())
             max_cp = int((self.var_max_cp.get() or str(min_cp)).strip())
             if min_cp <= 0 or max_cp <= 0:
@@ -158,7 +158,7 @@ class SubjectDialog(tk.Toplevel):
             self.result = SubjectRow(
                 name=name,
                 teacher=teacher,
-                sessions_per_week=spw,
+                periods_per_week=spw,
                 min_contiguous_periods=min_cp,
                 max_contiguous_periods=max_cp,
                 tags=tags,
@@ -185,7 +185,7 @@ class TagLimitDialog(tk.Toplevel):
         ttk.Label(frm, text="Tag*").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=4)
         ttk.Entry(frm, textvariable=self.var_tag, width=30).grid(row=0, column=1, sticky="ew", pady=4)
 
-        ttk.Label(frm, text="Max sessions/day*").grid(row=1, column=0, sticky="w", padx=(0, 10), pady=4)
+        ttk.Label(frm, text="Max periods/day*").grid(row=1, column=0, sticky="w", padx=(0, 10), pady=4)
         ttk.Entry(frm, textvariable=self.var_limit, width=30).grid(row=1, column=1, sticky="ew", pady=4)
 
         btns = ttk.Frame(frm)
@@ -212,7 +212,7 @@ class TagLimitDialog(tk.Toplevel):
                 raise ValueError("Tag is required.")
             limit = int((self.var_limit.get() or "").strip())
             if limit < 0:
-                raise ValueError("Max sessions/day must be a non-negative integer.")
+                raise ValueError("Max periods/day must be a non-negative integer.")
             self.result = (tag, limit)
             self.destroy()
         except Exception as e:
@@ -244,7 +244,7 @@ class TimetableEditorApp(tk.Tk):
         return {
             "constraints": {
                 "min_classes_per_week": 0,
-                "max_sessions_per_day_by_tag": {},
+                "max_periods_per_day_by_tag": {},
             },
             "calendar": {"days": ["Mon", "Tue", "Wed", "Thu", "Fri"], "periods": ["P1", "P2", "P3", "P4", "P5"]},
             "classes": [],
@@ -548,10 +548,15 @@ class TimetableEditorApp(tk.Tk):
             semesters = c.get("semesters", {})
             if not isinstance(semesters, dict):
                 raise ValueError(f"Class '{c.get('name')}' semesters must be an object.")
-            for sem in SEMESTERS:
-                if sem not in semesters:
-                    raise ValueError(f"Class '{c.get('name')}' must define semester '{sem}'.")
-                sem_obj = semesters.get(sem, {})
+            if not semesters:
+                raise ValueError(f"Class '{c.get('name')}' must define at least one semester.")
+
+            for sem, sem_obj in semesters.items():
+                if not isinstance(sem, str) or not sem.strip():
+                    raise ValueError(f"Class '{c.get('name')}' has an invalid semester key.")
+                if not isinstance(sem_obj, dict):
+                    raise ValueError(f"Class '{c.get('name')}' semester '{sem}' must be an object.")
+
                 subjects = sem_obj.get("subjects", [])
                 if not isinstance(subjects, list) or not subjects:
                     raise ValueError(f"Class '{c.get('name')}' semester '{sem}' must have at least one subject.")
@@ -560,10 +565,10 @@ class TimetableEditorApp(tk.Tk):
                         raise ValueError(f"Invalid subject entry in class '{c.get('name')}' {sem}.")
                     if not (s.get("name") and s.get("teacher")):
                         raise ValueError(f"Each subject must have name and teacher (class '{c.get('name')}' {sem}).")
-                    spw = s.get("sessions_per_week")
-                    if not isinstance(spw, int) or spw <= 0:
+                    ppw = s.get("periods_per_week", s.get("sessions_per_week"))
+                    if not isinstance(ppw, int) or ppw <= 0:
                         raise ValueError(
-                            f"sessions_per_week must be a positive int for subject '{s.get('name')}' (class '{c.get('name')}' {sem})."
+                            f"periods_per_week must be a positive int for subject '{s.get('name')}' (class '{c.get('name')}' {sem})."
                         )
                     min_cp = int(s.get("min_contiguous_periods", 1))
                     max_cp = int(s.get("max_contiguous_periods", min_cp))
@@ -601,7 +606,7 @@ class TimetableEditorApp(tk.Tk):
         for iid in self.tags_tree.get_children():
             self.tags_tree.delete(iid)
         constraints = self._data.get("constraints", {}) or {}
-        by_tag = constraints.get("max_sessions_per_day_by_tag", {}) or {}
+        by_tag = constraints.get("max_periods_per_day_by_tag", constraints.get("max_sessions_per_day_by_tag", {})) or {}
         if isinstance(by_tag, dict):
             for tag in sorted(by_tag.keys()):
                 self.tags_tree.insert("", "end", values=(tag, by_tag[tag]))
@@ -651,7 +656,7 @@ class TimetableEditorApp(tk.Tk):
                     values=(
                         row.name,
                         row.teacher,
-                        row.sessions_per_week,
+                        row.periods_per_week,
                         row.min_contiguous_periods,
                         row.max_contiguous_periods,
                         _format_csv_list(list(row.tags or [])),
@@ -749,10 +754,10 @@ class TimetableEditorApp(tk.Tk):
             return
         tag, limit = dlg.result
         constraints = self._data.setdefault("constraints", {})
-        by_tag = constraints.setdefault("max_sessions_per_day_by_tag", {})
+        by_tag = constraints.setdefault("max_periods_per_day_by_tag", {})
         if not isinstance(by_tag, dict):
-            constraints["max_sessions_per_day_by_tag"] = {}
-            by_tag = constraints["max_sessions_per_day_by_tag"]
+            constraints["max_periods_per_day_by_tag"] = {}
+            by_tag = constraints["max_periods_per_day_by_tag"]
         by_tag[tag] = limit
         self._refresh_tag_limits_tree()
         self._set_dirty(True)
@@ -774,10 +779,10 @@ class TimetableEditorApp(tk.Tk):
             return
         new_tag, new_limit = dlg.result
         constraints = self._data.setdefault("constraints", {})
-        by_tag = constraints.setdefault("max_sessions_per_day_by_tag", {})
+        by_tag = constraints.setdefault("max_periods_per_day_by_tag", {})
         if not isinstance(by_tag, dict):
-            constraints["max_sessions_per_day_by_tag"] = {}
-            by_tag = constraints["max_sessions_per_day_by_tag"]
+            constraints["max_periods_per_day_by_tag"] = {}
+            by_tag = constraints["max_periods_per_day_by_tag"]
         # If tag renamed, remove old.
         if new_tag != tag and str(tag) in by_tag:
             del by_tag[str(tag)]
@@ -794,7 +799,7 @@ class TimetableEditorApp(tk.Tk):
         if not messagebox.askyesno("Remove tag limit", f"Remove tag constraint '{tag}'?", parent=self):
             return
         constraints = self._data.setdefault("constraints", {})
-        by_tag = constraints.setdefault("max_sessions_per_day_by_tag", {})
+        by_tag = constraints.setdefault("max_periods_per_day_by_tag", {})
         if isinstance(by_tag, dict) and str(tag) in by_tag:
             del by_tag[str(tag)]
         self._refresh_tag_limits_tree()
@@ -814,11 +819,11 @@ class TimetableEditorApp(tk.Tk):
                     raise ValueError("min_classes_per_week must be a non-negative integer (or blank).")
                 constraints["min_classes_per_week"] = val
 
-            # Ensure max_sessions_per_day_by_tag exists
-            if "max_sessions_per_day_by_tag" not in constraints or not isinstance(
-                constraints.get("max_sessions_per_day_by_tag"), dict
+            # Ensure max_periods_per_day_by_tag exists
+            if "max_periods_per_day_by_tag" not in constraints or not isinstance(
+                constraints.get("max_periods_per_day_by_tag"), dict
             ):
-                constraints["max_sessions_per_day_by_tag"] = {}
+                constraints["max_periods_per_day_by_tag"] = {}
 
             self._set_dirty(True)
             if not silent:

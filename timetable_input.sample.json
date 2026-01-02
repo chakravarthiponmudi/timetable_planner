@@ -7,7 +7,8 @@
     "max_periods_per_day_by_tag": {
       "practical": 2,
       "Test": 1
-    }
+    },
+    "teacher_max_periods_per_week": 16
   },
   "calendar": {
     "days": [
@@ -15,7 +16,8 @@
       "Tue",
       "Wed",
       "Thu",
-      "Fri"
+      "Fri",
+      "Sat"
     ],
     "periods": [
       "P1",
@@ -50,6 +52,12 @@
           "period": "P5"
         }
       ],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr_Rao",
+      "max_periods_per_week": 22,
+      "unavailable_periods": [],
       "preferred_periods": []
     }
   ],
@@ -423,7 +431,8 @@
             {
               "name": "CompSci_III",
               "teachers": [
-                "Prof_Mehta"
+                "Prof_Mehta",
+                "Prof_Gupta"
               ],
               "teaching_mode": "any_of",
               "periods_per_week": 4,
@@ -436,7 +445,8 @@
             {
               "name": "DataStructures",
               "teachers": [
-                "Prof_Mehta"
+                "Prof_Mehta",
+                "Prof_Gupta"
               ],
               "teaching_mode": "any_of",
               "periods_per_week": 5,

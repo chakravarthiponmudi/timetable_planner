@@ -1270,6 +1270,7 @@ def main() -> None:
     min_classes_per_week = ti.constraints.min_classes_per_week
     min_classes_per_week_by_class = ti.constraints.min_classes_per_week_by_class
     max_periods_per_day_by_tag = ti.constraints.max_periods_per_day_by_tag
+    global_teacher_max = getattr(ti.constraints, "teacher_max_periods_per_week", None)
 
     teacher_max_periods_per_week: Dict[str, int] = {}
     teacher_unavailable_periods: Dict[str, List[Tuple[str, str]]] = {}
@@ -1281,6 +1282,20 @@ def main() -> None:
             teacher_unavailable_periods[t.name] = [(dp.day, dp.period) for dp in t.unavailable_periods]
         if t.preferred_periods:
             teacher_preferred_periods[t.name] = list(t.preferred_periods)
+
+    # Apply global teacher max/week to all teachers, unless overridden per-teacher.
+    if global_teacher_max is not None:
+        # Collect every teacher mentioned in subjects for this semester.
+        all_teachers: set[str] = set()
+        for c in ti.classes:
+            sem = c.semesters.get(args.semester)  # type: ignore[arg-type]
+            if sem is None:
+                continue
+            for s in sem.subjects:
+                for nm in (s.teachers or []):
+                    all_teachers.add(nm)
+        for tname in all_teachers:
+            teacher_max_periods_per_week.setdefault(tname, int(global_teacher_max))
 
     # Build solver specs for the requested semester; skip classes missing that semester.
     specs: List[ClassSemesterSpec] = []

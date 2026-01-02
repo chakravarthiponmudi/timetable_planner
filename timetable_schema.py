@@ -225,6 +225,7 @@ class Constraints(BaseModel):
     min_classes_per_week: Optional[int] = None
     min_classes_per_week_by_class: Dict[str, int] = Field(default_factory=dict)
     max_periods_per_day_by_tag: Dict[str, int] = Field(default_factory=dict)
+    teacher_max_periods_per_week: Optional[int] = None
 
     @field_validator("min_classes_per_week")
     @classmethod
@@ -234,6 +235,15 @@ class Constraints(BaseModel):
         if not isinstance(v, int) or v < 0:
             raise ValueError("must be a non-negative integer")
         return v
+
+    @field_validator("teacher_max_periods_per_week")
+    @classmethod
+    def _teacher_max_nonneg(cls, v: Optional[int]) -> Optional[int]:
+        if v is None:
+            return None
+        if not isinstance(v, int) or v < 0:
+            raise ValueError("must be a non-negative integer if provided")
+        return int(v)
 
     @field_validator("min_classes_per_week_by_class", "max_periods_per_day_by_tag")
     @classmethod

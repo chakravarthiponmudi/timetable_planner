@@ -557,6 +557,32 @@ def main() -> None:
                         st.success(f"Cleared override for {sel_cls}.")
 
         st.divider()
+        st.write("Teacher max periods per week (global): `constraints.teacher_max_periods_per_week`")
+        tmax = constraints.get("teacher_max_periods_per_week", None)
+        tmax_enabled = st.checkbox("Enable global teacher max/week", value=(tmax is not None), key="tmax_en")
+        tmax_val = st.number_input(
+            "Teacher max periods/week",
+            min_value=0,
+            step=1,
+            value=int(tmax) if isinstance(tmax, int) else 16,
+            key="tmax_val",
+            disabled=not tmax_enabled,
+        )
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("Apply teacher max/week"):
+                constraints["teacher_max_periods_per_week"] = int(tmax_val) if tmax_enabled else None
+                if constraints.get("teacher_max_periods_per_week") is None:
+                    constraints.pop("teacher_max_periods_per_week", None)
+                st.session_state["dirty"] = True
+                st.success("Updated global teacher max/week.")
+        with c2:
+            if st.button("Clear teacher max/week"):
+                constraints.pop("teacher_max_periods_per_week", None)
+                st.session_state["dirty"] = True
+                st.success("Cleared global teacher max/week.")
+
+        st.divider()
         st.write("Max periods per day by tag: `constraints.max_periods_per_day_by_tag`")
         by_tag = constraints.get("max_periods_per_day_by_tag", constraints.get("max_sessions_per_day_by_tag", {})) or {}
         if not isinstance(by_tag, dict):

@@ -5,7 +5,8 @@
       "BSc_ALLIED_MEDICAL": 1
     },
     "max_periods_per_day_by_tag": {
-      "practical": 3
+      "practical": 2,
+      "Test": 1
     }
   },
   "calendar": {
@@ -143,7 +144,13 @@
               "max_contiguous_periods": 1,
               "tags": [],
               "allowed_starts": [],
-              "fixed_sessions": []
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P2",
+                  "duration": 1
+                }
+              ]
             }
           ],
           "blocked_periods": []
@@ -255,7 +262,7 @@
             {
               "name": "Chemistry_I",
               "teacher": "Dr_Iyer",
-              "periods_per_week": 5,
+              "periods_per_week": 6,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
               "tags": [],
@@ -350,7 +357,7 @@
             {
               "name": "AdvancedChemistry",
               "teacher": "Dr_Iyer",
-              "periods_per_week": 7,
+              "periods_per_week": 6,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
               "tags": [],
@@ -446,6 +453,16 @@
               "name": "ResearchMethods_I",
               "teacher": "Dr_Sharma",
               "periods_per_week": 2,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "HIgher Chemistry",
+              "teacher": "Dr_Iyer",
+              "periods_per_week": 1,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
               "tags": [],

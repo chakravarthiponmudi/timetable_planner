@@ -12,6 +12,9 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
+import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 
 import streamlit as st
@@ -305,15 +308,17 @@ def _get_state() -> Dict[str, Any]:
             st.session_state["save_path"] = "timetable_input.sample.json"
         else:
             st.session_state["save_path"] = "timetable_input.json"
+    if "uploaded_sig" not in st.session_state:
+        st.session_state["uploaded_sig"] = None
     return st.session_state["data"]
 
 
-def _autosave_to_disk(data: Dict[str, Any]) -> None:
+def _autosave_to_disk(data: Dict[str, Any], *, path_override: Optional[str] = None) -> None:
     """
     Always-save behavior: whenever the user clicks a mutating action (Save subject, Apply calendar, etc.),
     we validate and write to the configured save_path.
     """
-    path = str(st.session_state.get("save_path") or "").strip()
+    path = str(path_override or st.session_state.get("save_path") or "").strip()
     if not path:
         st.error("Save path is empty. Set 'Save path' in the sidebar before editing.")
         return
@@ -334,6 +339,59 @@ def _autosave_to_disk(data: Dict[str, Any]) -> None:
         st.error(f"Could not save (validation failed): {e}")
 
 
+def _project_root() -> str:
+    # Best-effort: directory where this script lives.
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _venv_python() -> str:
+    """
+    Prefer the repo-local .venv python to match the user's expectation.
+    Fall back to current interpreter if .venv isn't present.
+    """
+    root = _project_root()
+    cand = os.path.join(root, ".venv", "bin", "python3")
+    if os.path.exists(cand):
+        return cand
+    cand = os.path.join(root, ".venv", "bin", "python")
+    if os.path.exists(cand):
+        return cand
+    return sys.executable
+
+
+def _run_solver_cmd(*, input_path: str, semester: str, print_teachers: bool, time_limit_s: float) -> Dict[str, Any]:
+    root = _project_root()
+    py = _venv_python()
+    cmd: List[str] = [
+        py,
+        os.path.join(root, "timetable_solver.py"),
+        "--input",
+        input_path,
+        "--semester",
+        semester,
+        "--time_limit_s",
+        str(float(time_limit_s)),
+    ]
+    if print_teachers:
+        cmd.append("--print_teachers")
+
+    # Run from project root so relative save_path like timetable_input.json works.
+    res = subprocess.run(
+        cmd,
+        cwd=root,
+        capture_output=True,
+        text=True,
+    )
+    return {
+        "cmd": cmd,
+        "returncode": res.returncode,
+        "stdout": res.stdout or "",
+        "stderr": res.stderr or "",
+        "python": py,
+        "cwd": root,
+    }
+
+
 def _find_class(data: Dict[str, Any], class_name: str) -> Optional[Dict[str, Any]]:
     for c in data.get("classes", []) or []:
         if c.get("name") == class_name:
@@ -350,26 +408,34 @@ def main() -> None:
 
     with st.sidebar:
         st.header("File")
-        uploaded = st.file_uploader("Open JSON", type=["json"])
+        uploaded = st.file_uploader("Open JSON", type=["json"], key="open_json")
         if uploaded is not None:
-            try:
-                loaded = json.loads(uploaded.getvalue().decode("utf-8"))
-                if not isinstance(loaded, dict):
-                    raise ValueError("Root JSON must be an object.")
-                st.session_state["data"] = loaded
-                data = st.session_state["data"]
-                st.session_state["dirty"] = False
-                # Best-effort: default save path to uploaded file name (saved in current working directory).
-                if getattr(uploaded, "name", None):
-                    st.session_state["save_path"] = str(uploaded.name)
-                st.success("Loaded JSON into editor.")
-            except Exception as e:
-                st.error(f"Failed to load JSON: {e}")
+            # IMPORTANT: Streamlit reruns the script on every interaction, and file_uploader keeps its value.
+            # If we blindly reload on every rerun, we wipe user edits and reset dirty back to false.
+            # So we only load when the uploaded file content changes.
+            raw = uploaded.getvalue()
+            sig = (getattr(uploaded, "name", None), len(raw), hashlib.sha256(raw).hexdigest())
+            if st.session_state.get("uploaded_sig") != sig:
+                try:
+                    loaded = json.loads(raw.decode("utf-8"))
+                    if not isinstance(loaded, dict):
+                        raise ValueError("Root JSON must be an object.")
+                    st.session_state["data"] = loaded
+                    data = st.session_state["data"]
+                    st.session_state["dirty"] = False
+                    st.session_state["uploaded_sig"] = sig
+                    # Best-effort: default save path to uploaded file name (saved in current working directory).
+                    if getattr(uploaded, "name", None):
+                        st.session_state["save_path"] = str(uploaded.name)
+                    st.success("Loaded JSON into editor.")
+                except Exception as e:
+                    st.error(f"Failed to load JSON: {e}")
 
         if st.button("New (reset)"):
             st.session_state["data"] = new_data()
             data = st.session_state["data"]
             st.session_state["dirty"] = True
+            st.session_state["uploaded_sig"] = None
             st.success("Reset to new template.")
 
         st.divider()
@@ -416,7 +482,6 @@ def main() -> None:
             cal["days"] = _parse_csv_list(days_csv)
             cal["periods"] = _parse_csv_list(periods_csv)
             st.session_state["dirty"] = True
-            _autosave_to_disk(data)
             st.success("Calendar updated.")
 
     with tab_constraints:
@@ -435,12 +500,10 @@ def main() -> None:
             if st.button("Set global min_classes_per_week"):
                 constraints["min_classes_per_week"] = int(gmin_val)
                 st.session_state["dirty"] = True
-                _autosave_to_disk(data)
                 st.success("Set global min_classes_per_week.")
             if st.button("Clear global min_classes_per_week"):
                 constraints.pop("min_classes_per_week", None)
                 st.session_state["dirty"] = True
-                _autosave_to_disk(data)
                 st.success("Cleared global min_classes_per_week.")
 
         with col2:
@@ -459,7 +522,6 @@ def main() -> None:
                     constraints.setdefault("min_classes_per_week_by_class", {})
                     constraints["min_classes_per_week_by_class"][sel_cls] = int(override_val)
                     st.session_state["dirty"] = True
-                    _autosave_to_disk(data)
                     st.success(f"Set override for {sel_cls}.")
             with c2:
                 if st.button("Clear override") and sel_cls != "(select)":
@@ -468,7 +530,6 @@ def main() -> None:
                         if not constraints["min_classes_per_week_by_class"]:
                             constraints.pop("min_classes_per_week_by_class", None)
                         st.session_state["dirty"] = True
-                        _autosave_to_disk(data)
                         st.success(f"Cleared override for {sel_cls}.")
 
         st.divider()
@@ -490,7 +551,6 @@ def main() -> None:
                 else:
                     by_tag[tag_name.strip()] = int(tag_limit)
                     st.session_state["dirty"] = True
-                    _autosave_to_disk(data)
                     st.success(f"Set tag limit for '{tag_name.strip()}'.")
 
         if by_tag:
@@ -499,7 +559,6 @@ def main() -> None:
             if st.button("Remove selected tag") and del_tag != "(select)":
                 del by_tag[del_tag]
                 st.session_state["dirty"] = True
-                _autosave_to_disk(data)
                 st.success(f"Removed '{del_tag}'.")
 
     with tab_classes:
@@ -524,7 +583,6 @@ def main() -> None:
                     cobj: Dict[str, Any] = {"name": name, "semesters": {"S1": {"subjects": [], "blocked_periods": []}}}
                     data["classes"].append(cobj)
                     st.session_state["dirty"] = True
-                    _autosave_to_disk(data)
                     st.success(f"Added class '{name}'.")
 
             if selected != "(none)":
@@ -545,7 +603,6 @@ def main() -> None:
                         if isinstance(by_class, dict) and selected in by_class and newn != selected:
                             by_class[newn] = by_class.pop(selected)
                         st.session_state["dirty"] = True
-                        _autosave_to_disk(data)
                         st.success(f"Renamed class '{selected}' -> '{newn}'.")
 
                 if st.button("Remove selected class"):
@@ -557,7 +614,6 @@ def main() -> None:
                         if not by_class:
                             constraints.pop("min_classes_per_week_by_class", None)
                     st.session_state["dirty"] = True
-                    _autosave_to_disk(data)
                     st.success(f"Removed class '{selected}'.")
 
         with right:
@@ -591,7 +647,6 @@ def main() -> None:
                         if (not s2_enabled) and "S2" in semesters:
                             del semesters["S2"]
                         st.session_state["dirty"] = True
-                        _autosave_to_disk(data)
                         st.success("Updated semesters for this class.")
 
                     available = [s for s in SEMESTERS if s in semesters]
@@ -621,7 +676,6 @@ def main() -> None:
                     if st.button("Apply blocked periods", key=f"apply_blocked_{selected}_{sem}"):
                         sem_obj["blocked_periods"] = blocked_new
                         st.session_state["dirty"] = True
-                        _autosave_to_disk(data)
                         st.success("Blocked periods updated.")
 
                     st.divider()
@@ -726,7 +780,6 @@ def main() -> None:
                                 else:
                                     subjects.append(subj_obj)
                                     st.session_state["dirty"] = True
-                                    _autosave_to_disk(data)
                                     st.success(f"Added subject '{name}'.")
                             else:
                                 if not existing_subj:
@@ -740,7 +793,6 @@ def main() -> None:
                                     existing_subj.clear()
                                     existing_subj.update(subj_obj)
                                     st.session_state["dirty"] = True
-                                    _autosave_to_disk(data)
                                     st.success(f"Updated subject '{name}'.")
 
                     st.divider()
@@ -750,12 +802,64 @@ def main() -> None:
                     if st.button("Remove selected subject", key=f"remsub_{selected}_{sem}") and rem != "(select)":
                         cobj["semesters"][sem]["subjects"] = [s for s in subjects if s.get("name") != rem]
                         st.session_state["dirty"] = True
-                        _autosave_to_disk(data)
                         st.success(f"Removed '{rem}'.")
 
     with tab_preview:
         st.subheader("Preview")
         st.code(json.dumps(data, indent=2, ensure_ascii=False), language="json")
+
+    # -----------------------------
+    # Run solver (bottom)
+    # -----------------------------
+    st.divider()
+    st.subheader("Run solver")
+    st.caption("Runs `timetable_solver.py` using the repo-local `.venv` if available, and shows the output below.")
+
+    c1, c2, c3 = st.columns([1, 1, 1])
+    with c1:
+        run_semester = st.selectbox("Semester", options=list(SEMESTERS), index=0, key="run_semester")
+    with c2:
+        run_print_teachers = st.checkbox("Print teacher timetables", value=True, key="run_print_teachers")
+    with c3:
+        run_time_limit = st.number_input("Time limit (seconds)", min_value=1.0, step=1.0, value=10.0, key="run_time_limit")
+
+    # Default input path is the active save_path (what the UI is saving to).
+    default_input_path = str(st.session_state.get("save_path") or "").strip()
+    run_input_path = st.text_input("Input JSON path", value=default_input_path, key="run_input_path")
+
+    if "last_run" not in st.session_state:
+        st.session_state["last_run"] = None
+
+    if st.button("Run timetable solver", type="primary"):
+        if st.session_state.get("dirty"):
+            st.warning(
+                "You have unsaved changes. The solver will run using the file on disk (it will NOT include in-memory edits).",
+                icon="⚠️",
+            )
+        with st.spinner("Running solver..."):
+            result = _run_solver_cmd(
+                input_path=run_input_path,
+                semester=str(run_semester),
+                print_teachers=bool(run_print_teachers),
+                time_limit_s=float(run_time_limit),
+            )
+        st.session_state["last_run"] = result
+
+    last = st.session_state.get("last_run")
+    if last:
+        st.markdown("**Run details**")
+        st.write(f"Python: `{last['python']}`")
+        st.write(f"CWD: `{last['cwd']}`")
+        st.write("Command:")
+        st.code(" ".join(last["cmd"]), language="bash")
+        st.write(f"Exit code: `{last['returncode']}`")
+
+        if last.get("stdout"):
+            st.markdown("**STDOUT**")
+            st.code(last["stdout"], language="text")
+        if last.get("stderr"):
+            st.markdown("**STDERR**")
+            st.code(last["stderr"], language="text")
 
 
 if __name__ == "__main__":

@@ -80,6 +80,47 @@ streamlit run timetable_web_gui.py
 
 This opens a local browser UI where you can **load/edit** the timetable JSON and **download** an output file.
 
+### Run as a server (LAN / Public IP) — no HTTPS
+
+You can run the Streamlit app bound to `0.0.0.0` so it’s reachable from other machines.
+
+#### 1) Start the server
+
+```bash
+source .venv/bin/activate
+streamlit run timetable_web_gui.py --server.address 0.0.0.0 --server.port 8501 --server.headless true
+```
+
+Or use the helper script:
+
+```bash
+chmod +x run_server.sh
+./run_server.sh
+```
+
+Then from another machine on the same network:
+
+- `http://<your-lan-ip>:8501`
+
+#### 2) Expose via public IP (router port forwarding)
+
+To access it from the internet:
+
+- **Find your LAN IP** (example `192.168.1.50`)
+- **Forward a port on your router**:
+  - External port `8501` → Internal IP `<your-lan-ip>` port `8501`
+- **Allow inbound connections** in macOS firewall (or disable firewall for this port)
+- **Find your public IP** from your ISP/router
+
+Then you can access:
+
+- `http://<your-public-ip>:8501`
+
+#### Important security note
+
+Exposing Streamlit on a public IP **without HTTPS and without authentication is risky**.
+At minimum, only do this temporarily or restrict access (VPN, IP allowlist, etc.).
+
 ### Troubleshooting (macOS): Tkinter aborts on `tk.Tk()`
 
 If you see an abort like:

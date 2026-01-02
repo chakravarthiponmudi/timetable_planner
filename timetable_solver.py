@@ -2,6 +2,7 @@ import argparse
 import json
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
+import html
 
 from ortools.sat.python import cp_model
 
@@ -902,12 +903,119 @@ def _format_teacher_timetable(
     return "\n".join(lines)
 
 
+def _format_class_timetable_html(
+    *,
+    class_name: str,
+    subjects: List[str],
+    days: List[str],
+    periods: List[str],
+    solver: cp_model.CpSolver,
+    occ_subj: Dict[Tuple[str, str, int, int], cp_model.IntVar],
+    subject_teacher: Dict[Tuple[str, str], str],
+) -> str:
+    # Build grid: rows=days, cols=periods
+    rows: List[List[str]] = []
+    for d in range(len(days)):
+        row: List[str] = []
+        for p in range(len(periods)):
+            cell = "-"
+            for subj in subjects:
+                if solver.Value(occ_subj[(class_name, subj, d, p)]) == 1:
+                    cell = f"{subj} ({subject_teacher[(class_name, subj)]})"
+                    break
+            row.append(cell)
+        rows.append(row)
+
+    out: List[str] = []
+    out.append(f"<h3>Class: {html.escape(class_name)}</h3>")
+    out.append('<table class="tt">')
+    out.append("<thead><tr><th>Day</th>")
+    for per in periods:
+        out.append(f"<th>{html.escape(per)}</th>")
+    out.append("</tr></thead>")
+    out.append("<tbody>")
+    for d, day in enumerate(days):
+        out.append("<tr>")
+        out.append(f"<th>{html.escape(day)}</th>")
+        for p in range(len(periods)):
+            out.append(f"<td>{html.escape(rows[d][p])}</td>")
+        out.append("</tr>")
+    out.append("</tbody></table>")
+    return "\n".join(out)
+
+
+def _format_teacher_timetable_html(
+    *,
+    teacher: str,
+    specs: List[ClassSemesterSpec],
+    days: List[str],
+    periods: List[str],
+    solver: cp_model.CpSolver,
+    occ_subj: Dict[Tuple[str, str, int, int], cp_model.IntVar],
+    subject_teacher: Dict[Tuple[str, str], str],
+) -> str:
+    class_subjects: Dict[str, List[str]] = {cs.class_name: [s.name for s in cs.subjects] for cs in specs}
+
+    rows: List[List[str]] = []
+    for d in range(len(days)):
+        row: List[str] = []
+        for p in range(len(periods)):
+            cell = "-"
+            for cs in specs:
+                for subj in class_subjects[cs.class_name]:
+                    if subject_teacher[(cs.class_name, subj)] != teacher:
+                        continue
+                    if solver.Value(occ_subj[(cs.class_name, subj, d, p)]) == 1:
+                        cell = f"{cs.class_name}: {subj}"
+                        break
+                if cell != "-":
+                    break
+            row.append(cell)
+        rows.append(row)
+
+    out: List[str] = []
+    out.append(f"<h3>Teacher: {html.escape(teacher)}</h3>")
+    out.append('<table class="tt">')
+    out.append("<thead><tr><th>Day</th>")
+    for per in periods:
+        out.append(f"<th>{html.escape(per)}</th>")
+    out.append("</tr></thead>")
+    out.append("<tbody>")
+    for d, day in enumerate(days):
+        out.append("<tr>")
+        out.append(f"<th>{html.escape(day)}</th>")
+        for p in range(len(periods)):
+            out.append(f"<td>{html.escape(rows[d][p])}</td>")
+        out.append("</tr>")
+    out.append("</tbody></table>")
+    return "\n".join(out)
+
+
+def _wrap_html_document(body: str) -> str:
+    # Lightweight styling so it can be embedded or used standalone.
+    style = """
+<style>
+.tt { border-collapse: collapse; width: 100%; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 13px; }
+.tt th, .tt td { border: 1px solid #ddd; padding: 6px 8px; vertical-align: top; }
+.tt thead th { background: #f6f7f9; }
+.tt tbody th { background: #fbfbfc; text-align: left; white-space: nowrap; }
+</style>
+""".strip()
+    return "\n".join([style, body])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="College timetable generator using Google OR-Tools (CP-SAT).")
     parser.add_argument("--input", required=True, help="Path to input JSON file.")
     parser.add_argument("--semester", required=True, help="Semester key in JSON, e.g. 'S1' or 'S2'.")
     parser.add_argument("--time_limit_s", type=float, default=10.0, help="CP-SAT time limit in seconds.")
     parser.add_argument("--print_teachers", action="store_true", help="Also print timetable per teacher.")
+    parser.add_argument(
+        "--output_format",
+        choices=["text", "html"],
+        default="text",
+        help="Output format. 'html' prints HTML tables (embed-friendly). Default: text.",
+    )
     args = parser.parse_args()
 
     # Shared schema validation (used by both CLI + GUI)
@@ -971,37 +1079,92 @@ def main() -> None:
         time_limit_s=args.time_limit_s,
     )
 
-    print(f"Status: {ctx['meta']['status']}")
+    if args.output_format == "html":
+        parts: List[str] = []
+        parts.append(f"<h2>Status: {html.escape(str(ctx['meta']['status']))}</h2>")
+    else:
+        print(f"Status: {ctx['meta']['status']}")
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        print("No feasible timetable found.")
-        print()
-        for line in diagnose_infeasible(
-            specs=specs,
-            days=days,
-            periods=periods,
-            min_classes_per_week=min_classes_per_week,
-            min_classes_per_week_by_class=min_classes_per_week_by_class,
-            max_periods_per_day_by_tag=max_periods_per_day_by_tag,
-            time_limit_s=min(5.0, float(args.time_limit_s)),
-        ):
-            print(line)
+        if args.output_format == "html":
+            parts.append("<p><strong>No feasible timetable found.</strong></p>")
+            diag = diagnose_infeasible(
+                specs=specs,
+                days=days,
+                periods=periods,
+                min_classes_per_week=min_classes_per_week,
+                min_classes_per_week_by_class=min_classes_per_week_by_class,
+                max_periods_per_day_by_tag=max_periods_per_day_by_tag,
+                time_limit_s=min(5.0, float(args.time_limit_s)),
+            )
+            if diag:
+                parts.append("<ul>")
+                for line in diag:
+                    parts.append(f"<li>{html.escape(line)}</li>")
+                parts.append("</ul>")
+            print(_wrap_html_document("\n".join(parts)))
+        else:
+            print("No feasible timetable found.")
+            print()
+            for line in diagnose_infeasible(
+                specs=specs,
+                days=days,
+                periods=periods,
+                min_classes_per_week=min_classes_per_week,
+                min_classes_per_week_by_class=min_classes_per_week_by_class,
+                max_periods_per_day_by_tag=max_periods_per_day_by_tag,
+                time_limit_s=min(5.0, float(args.time_limit_s)),
+            ):
+                print(line)
         return
-    print(f"Objective (lower is better): {ctx['meta']['objective_value']}")
-    print()
+    if args.output_format == "html":
+        parts.append(f"<p>Objective (lower is better): <code>{html.escape(str(ctx['meta']['objective_value']))}</code></p>")
+    else:
+        print(f"Objective (lower is better): {ctx['meta']['objective_value']}")
+        print()
 
     # Print class timetables
-    for cs in specs:
-        subjects = [s.name for s in cs.subjects]
-        print(_format_class_timetable(
-            class_name=cs.class_name,
-            subjects=subjects,
-            days=days,
-            periods=periods,
-            solver=solver,
-            occ_subj=ctx["occ_subj"],
-            subject_teacher=ctx["subject_teacher"],
-        ))
-        print()
+    if args.output_format == "html":
+        for cs in specs:
+            subjects = [s.name for s in cs.subjects]
+            parts.append(
+                _format_class_timetable_html(
+                    class_name=cs.class_name,
+                    subjects=subjects,
+                    days=days,
+                    periods=periods,
+                    solver=solver,
+                    occ_subj=ctx["occ_subj"],
+                    subject_teacher=ctx["subject_teacher"],
+                )
+            )
+        if args.print_teachers:
+            for teacher in ctx["meta"]["teachers"]:
+                parts.append(
+                    _format_teacher_timetable_html(
+                        teacher=teacher,
+                        specs=specs,
+                        days=days,
+                        periods=periods,
+                        solver=solver,
+                        occ_subj=ctx["occ_subj"],
+                        subject_teacher=ctx["subject_teacher"],
+                    )
+                )
+        print(_wrap_html_document("\n\n".join(parts)))
+        return
+    else:
+        for cs in specs:
+            subjects = [s.name for s in cs.subjects]
+            print(_format_class_timetable(
+                class_name=cs.class_name,
+                subjects=subjects,
+                days=days,
+                periods=periods,
+                solver=solver,
+                occ_subj=ctx["occ_subj"],
+                subject_teacher=ctx["subject_teacher"],
+            ))
+            print()
 
     if args.print_teachers:
         for teacher in ctx["meta"]["teachers"]:

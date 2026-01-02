@@ -359,7 +359,14 @@ def _venv_python() -> str:
     return sys.executable
 
 
-def _run_solver_cmd(*, input_path: str, semester: str, print_teachers: bool, time_limit_s: float) -> Dict[str, Any]:
+def _run_solver_cmd(
+    *,
+    input_path: str,
+    semester: str,
+    print_teachers: bool,
+    time_limit_s: float,
+    output_format: str = "text",
+) -> Dict[str, Any]:
     root = _project_root()
     py = _venv_python()
     cmd: List[str] = [
@@ -371,6 +378,8 @@ def _run_solver_cmd(*, input_path: str, semester: str, print_teachers: bool, tim
         semester,
         "--time_limit_s",
         str(float(time_limit_s)),
+        "--output_format",
+        str(output_format),
     ]
     if print_teachers:
         cmd.append("--print_teachers")
@@ -389,6 +398,7 @@ def _run_solver_cmd(*, input_path: str, semester: str, print_teachers: bool, tim
         "stderr": res.stderr or "",
         "python": py,
         "cwd": root,
+        "output_format": str(output_format),
     }
 
 
@@ -401,7 +411,7 @@ def _find_class(data: Dict[str, Any], class_name: str) -> Optional[Dict[str, Any
 
 def main() -> None:
     st.set_page_config(page_title="Timetable Input Editor", layout="wide")
-    st.title("Timetable Input Editor (no-Tk)")
+    st.title("Timetable Input Editor")
     st.caption("Edits the JSON schema consumed by `timetable_solver.py` and exports a file like `timetable_input.sample.json`.")
 
     data = _get_state()
@@ -823,6 +833,8 @@ def main() -> None:
     with c3:
         run_time_limit = st.number_input("Time limit (seconds)", min_value=1.0, step=1.0, value=10.0, key="run_time_limit")
 
+    run_output_format = st.selectbox("Output format", options=["text", "html"], index=0, key="run_output_format")
+
     # Default input path is the active save_path (what the UI is saving to).
     default_input_path = str(st.session_state.get("save_path") or "").strip()
     run_input_path = st.text_input("Input JSON path", value=default_input_path, key="run_input_path")
@@ -842,6 +854,7 @@ def main() -> None:
                 semester=str(run_semester),
                 print_teachers=bool(run_print_teachers),
                 time_limit_s=float(run_time_limit),
+                output_format=str(run_output_format),
             )
         st.session_state["last_run"] = result
 
@@ -856,7 +869,15 @@ def main() -> None:
 
         if last.get("stdout"):
             st.markdown("**STDOUT**")
-            st.code(last["stdout"], language="text")
+            if last.get("output_format") == "html":
+                try:
+                    import streamlit.components.v1 as components  # type: ignore
+
+                    components.html(last["stdout"], height=800, scrolling=True)
+                except Exception:
+                    st.code(last["stdout"], language="html")
+            else:
+                st.code(last["stdout"], language="text")
         if last.get("stderr"):
             st.markdown("**STDERR**")
             st.code(last["stderr"], language="text")

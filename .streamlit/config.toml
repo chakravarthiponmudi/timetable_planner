@@ -1,0 +1,10 @@
+[server]
+# Bind to all interfaces so other machines (and port-forwarding) can reach it.
+address = "0.0.0.0"
+port = 8501
+headless = true
+
+# If you expose this to the public internet, do NOT disable XSRF protection.
+# enableXsrfProtection = true
+
+

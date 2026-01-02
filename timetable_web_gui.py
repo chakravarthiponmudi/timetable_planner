@@ -236,8 +236,9 @@ def _validate_for_save(data: Dict[str, Any]) -> None:
             for s in subjects:
                 if not isinstance(s, dict):
                     raise ValueError(f"Invalid subject entry in class '{c.get('name')}' {sem}.")
-                if not (s.get("name") and s.get("teacher")):
-                    raise ValueError(f"Each subject must have name and teacher (class '{c.get('name')}' {sem}).")
+                teachers_list = s.get("teachers", []) or []
+                if not (s.get("name") and isinstance(teachers_list, list) and any(isinstance(x, str) and x.strip() for x in teachers_list)):
+                    raise ValueError(f"Each subject must have name and at least one teacher in 'teachers' (class '{c.get('name')}' {sem}).")
                 ppw = s.get("periods_per_week", s.get("sessions_per_week"))
                 if not isinstance(ppw, int) or ppw <= 0:
                     raise ValueError(
@@ -409,6 +410,17 @@ def _find_class(data: Dict[str, Any], class_name: str) -> Optional[Dict[str, Any
     return None
 
 
+def _teacher_names(data: Dict[str, Any]) -> List[str]:
+    return [t.get("name") for t in (data.get("teachers", []) or []) if isinstance(t, dict) and t.get("name")]
+
+
+def _find_teacher(data: Dict[str, Any], teacher_name: str) -> Optional[Dict[str, Any]]:
+    for t in (data.get("teachers", []) or []):
+        if isinstance(t, dict) and t.get("name") == teacher_name:
+            return t
+    return None
+
+
 def main() -> None:
     st.set_page_config(page_title="Timetable Input Editor", layout="wide")
     st.title("Timetable Input Editor")
@@ -474,7 +486,9 @@ def main() -> None:
         except Exception as e:
             st.warning(f"Fix validation issues to enable download: {e}")
 
-    tab_cal, tab_constraints, tab_classes, tab_preview = st.tabs(["Calendar", "Constraints", "Classes & Subjects", "Preview JSON"])
+    tab_cal, tab_constraints, tab_teachers, tab_classes, tab_preview = st.tabs(
+        ["Calendar", "Constraints", "Teachers", "Classes & Subjects", "Preview JSON"]
+    )
 
     with tab_cal:
         st.subheader("Calendar")
@@ -570,6 +584,88 @@ def main() -> None:
                 del by_tag[del_tag]
                 st.session_state["dirty"] = True
                 st.success(f"Removed '{del_tag}'.")
+
+    with tab_teachers:
+        st.subheader("Teachers")
+        data.setdefault("teachers", [])
+        cal_days = list((data.get("calendar", {}) or {}).get("days") or [])
+        cal_periods = list((data.get("calendar", {}) or {}).get("periods") or [])
+
+        left, right = st.columns([1, 2], gap="large")
+        with left:
+            st.write("Teachers")
+            existing_teachers = _teacher_names(data)
+            selected_t = st.selectbox("Select teacher", options=["(none)"] + existing_teachers, key="teacher_sel")
+
+            st.write("Add teacher")
+            new_t_name = st.text_input("New teacher name", value="", key="new_teacher_name")
+            if st.button("Add teacher", key="add_teacher_btn"):
+                name = (new_t_name or "").strip()
+                if not name:
+                    st.error("Teacher name required.")
+                elif name in existing_teachers:
+                    st.error("Teacher already exists.")
+                else:
+                    data["teachers"].append(
+                        {"name": name, "max_periods_per_week": None, "preferred_periods": [], "unavailable_periods": []}
+                    )
+                    st.session_state["dirty"] = True
+                    st.success(f"Added teacher '{name}'.")
+
+            if selected_t != "(none)":
+                if st.button("Remove selected teacher", key="remove_teacher_btn"):
+                    data["teachers"] = [t for t in data["teachers"] if t.get("name") != selected_t]
+                    st.session_state["dirty"] = True
+                    st.success(f"Removed teacher '{selected_t}'.")
+
+        with right:
+            if selected_t == "(none)":
+                st.info("Select a teacher to edit constraints.")
+            else:
+                t_obj = _find_teacher(data, selected_t)
+                if not t_obj:
+                    st.warning("Selected teacher not found (state changed).")
+                else:
+                    editor_key = f"teacher__{selected_t}"
+                    st.markdown(f"**Teacher constraints: {selected_t}**")
+
+                    max_ppw = t_obj.get("max_periods_per_week", None)
+                    max_enabled = st.checkbox(
+                        "Enable max periods per week",
+                        value=(max_ppw is not None),
+                        key=f"{editor_key}__max_en",
+                    )
+                    max_val = st.number_input(
+                        "Max periods per week",
+                        min_value=0,
+                        step=1,
+                        value=int(max_ppw) if isinstance(max_ppw, int) else 0,
+                        key=f"{editor_key}__max_val",
+                        disabled=not max_enabled,
+                    )
+
+                    preferred = list(t_obj.get("preferred_periods", []) or [])
+                    preferred_new = st.multiselect(
+                        "Preferred periods (soft preference)",
+                        options=list(cal_periods),
+                        default=[p for p in preferred if p in cal_periods],
+                        key=f"{editor_key}__pref",
+                        help="If set, scheduling this teacher outside these periods is penalized (soft).",
+                    )
+
+                    unavail_new = _blocked_periods_editor(
+                        key_prefix=f"{editor_key}__unavail",
+                        current=list(t_obj.get("unavailable_periods", []) or []),
+                        days=cal_days,
+                        periods=cal_periods,
+                    )
+
+                    if st.button("Apply teacher changes", key=f"{editor_key}__apply"):
+                        t_obj["max_periods_per_week"] = int(max_val) if max_enabled else None
+                        t_obj["preferred_periods"] = list(preferred_new)
+                        t_obj["unavailable_periods"] = list(unavail_new)
+                        st.session_state["dirty"] = True
+                        st.success("Teacher constraints updated.")
 
     with tab_classes:
         st.subheader("Classes & Subjects")
@@ -714,10 +810,23 @@ def main() -> None:
                             value=(existing_subj.get("name") if existing_subj else ""),
                             key=f"sname__{form_key_base}",
                         )
-                        s_teacher = st.text_input(
-                            "Teacher*",
-                            value=(existing_subj.get("teacher") if existing_subj else ""),
-                            key=f"steacher__{form_key_base}",
+                        existing_teachers_list = existing_subj.get("teachers") if existing_subj else None
+                        if not existing_teachers_list and existing_subj and existing_subj.get("teacher"):
+                            existing_teachers_list = [existing_subj.get("teacher")]
+                        s_teachers_csv = st.text_input(
+                            "Teachers (comma-separated)*",
+                            value=", ".join(existing_teachers_list or []) if existing_subj else "",
+                            key=f"steachers__{form_key_base}",
+                            help="Use multiple teachers for shared teaching. Combine with 'Teaching mode' below.",
+                        )
+                        s_teach_mode = st.selectbox(
+                            "Teaching mode",
+                            options=["any_of", "all_of"],
+                            index=0
+                            if not existing_subj
+                            else (1 if (existing_subj.get("teaching_mode") == "all_of") else 0),
+                            key=f"steachmode__{form_key_base}",
+                            help="any_of = OR (one of the listed teachers will be assigned per period). all_of = AND (all listed teachers teach together).",
                         )
                     with col2:
                         s_ppw = st.number_input(
@@ -765,13 +874,18 @@ def main() -> None:
 
                     if st.button("Save subject", key=f"save_{selected}_{sem}_{mode}"):
                         name = (s_name or "").strip()
-                        teacher = (s_teacher or "").strip()
-                        if not name or not teacher:
-                            st.error("Subject name and teacher are required.")
+                        teachers_list = _normalize_tags_csv(s_teachers_csv)  # reuse CSV parser (comma split + trim)
+                        if not name or not teachers_list:
+                            st.error("Subject name and at least one teacher are required.")
                         elif int(s_min) > int(s_max):
                             st.error("Min contiguous cannot exceed max contiguous.")
                         else:
-                            subj_obj: Dict[str, Any] = {"name": name, "teacher": teacher, "periods_per_week": int(s_ppw)}
+                            subj_obj: Dict[str, Any] = {
+                                "name": name,
+                                "teachers": teachers_list,
+                                "teaching_mode": str(s_teach_mode or "any_of"),
+                                "periods_per_week": int(s_ppw),
+                            }
                             if int(s_min) != 1:
                                 subj_obj["min_contiguous_periods"] = int(s_min)
                             if int(s_max) != int(s_min):

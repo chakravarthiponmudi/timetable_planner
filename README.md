@@ -25,13 +25,13 @@ pip install -r requirements.txt
 Solve Semester 1:
 
 ```bash
-python timetable_solver.py --input timetable_input.sample.json --semester S1
+.venv/bin/python3 timetable_solver.py --input timetable_input.sample.json --semester S1
 ```
 
 Solve Semester 2:
 
 ```bash
-python timetable_solver.py --input timetable_input.sample.json --semester S2
+.venv/bin/python3 timetable_solver.py --input timetable_input.sample.json --semester S2
 ```
 
 Note: if a class does not define the requested semester (e.g. it only has `S1`), it will be **skipped** for that run.
@@ -39,7 +39,7 @@ Note: if a class does not define the requested semester (e.g. it only has `S1`),
 Optional: also print timetables per teacher:
 
 ```bash
-python timetable_solver.py --input timetable_input.sample.json --semester S1 --print_teachers
+.venv/bin/python3 timetable_solver.py --input timetable_input.sample.json --semester S1 --print_teachers
 ```
 
 ### Debugging infeasible inputs
@@ -75,7 +75,7 @@ If you can’t use Tkinter on your machine, run the Streamlit editor instead:
 
 ```bash
 source .venv/bin/activate
-streamlit run timetable_web_gui.py
+.venv/bin/streamlit run timetable_web_gui.py
 ```
 
 This opens a local browser UI where you can **load/edit** the timetable JSON and **download** an output file.
@@ -88,7 +88,7 @@ You can run the Streamlit app bound to `0.0.0.0` so it’s reachable from other 
 
 ```bash
 source .venv/bin/activate
-streamlit run timetable_web_gui.py --server.address 0.0.0.0 --server.port 8501 --server.headless true
+.venv/bin/streamlit run timetable_web_gui.py --server.address 0.0.0.0 --server.port 8501 --server.headless true
 ```
 
 Or use the helper script:

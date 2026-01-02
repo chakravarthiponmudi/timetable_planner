@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
@@ -64,7 +64,11 @@ class Subject(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    teacher: str
+    # Backward-compatible: old inputs used a single `teacher` string.
+    # New inputs may use `teachers` + `teaching_mode`.
+    teacher: Optional[str] = None
+    teachers: List[str] = Field(default_factory=list)
+    teaching_mode: Literal["any_of", "all_of"] = "any_of"
     periods_per_week: int
     min_contiguous_periods: int = 1
     max_contiguous_periods: int = 1
@@ -72,13 +76,45 @@ class Subject(BaseModel):
     allowed_starts: List[DayPeriod] = Field(default_factory=list)
     fixed_sessions: List[FixedSession] = Field(default_factory=list)
 
-    @field_validator("name", "teacher")
+    @field_validator("name")
     @classmethod
     def _non_empty_str(cls, v: str) -> str:
         v = (v or "").strip()
         if not v:
             raise ValueError("must be a non-empty string")
         return v
+
+    @field_validator("teacher")
+    @classmethod
+    def _teacher_non_empty_if_present(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("must be a non-empty string if provided")
+        return v
+
+    @field_validator("teachers")
+    @classmethod
+    def _teachers_clean(cls, v: List[str]) -> List[str]:
+        if v is None:
+            return []
+        if not isinstance(v, list):
+            raise ValueError("must be an array of strings")
+        out: List[str] = []
+        for t in v:
+            if not isinstance(t, str) or not t.strip():
+                raise ValueError("teachers must be non-empty strings")
+            out.append(t.strip())
+        # de-dupe preserve order
+        seen = set()
+        uniq: List[str] = []
+        for t in out:
+            if t in seen:
+                continue
+            seen.add(t)
+            uniq.append(t)
+        return uniq
 
     @field_validator("periods_per_week")
     @classmethod
@@ -114,6 +150,15 @@ class Subject(BaseModel):
             raise ValueError("min_contiguous_periods cannot exceed max_contiguous_periods")
         if self.periods_per_week < self.min_contiguous_periods:
             raise ValueError("periods_per_week must be >= min_contiguous_periods")
+        # Normalize/validate teacher fields.
+        # Canonical: `teachers` + `teaching_mode`
+        # Backward-compatible input: allow `teacher` and normalize into `teachers`.
+        if not self.teachers:
+            if self.teacher is None:
+                raise ValueError("must provide either 'teacher' or 'teachers'")
+            self.teachers = [self.teacher]
+            # Do NOT keep `teacher` going forward; omit it in output.
+            self.teacher = None
         return self
 
 
@@ -207,11 +252,63 @@ class Constraints(BaseModel):
         return out
 
 
+class TeacherConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    # Hard constraint: max periods/week for this teacher (across all classes)
+    max_periods_per_week: Optional[int] = None
+    # Hard constraint: teacher cannot teach in these slots
+    unavailable_periods: List[DayPeriod] = Field(default_factory=list)
+    # Soft preference: prefer these periods (e.g., ["P1","P2","P3","P4"]); scheduled periods outside this set incur a penalty
+    preferred_periods: List[str] = Field(default_factory=list)
+
+    @field_validator("name")
+    @classmethod
+    def _name_non_empty(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("must be a non-empty string")
+        return v
+
+    @field_validator("max_periods_per_week")
+    @classmethod
+    def _max_nonneg(cls, v: Optional[int]) -> Optional[int]:
+        if v is None:
+            return None
+        if not isinstance(v, int) or v < 0:
+            raise ValueError("must be a non-negative integer if provided")
+        return int(v)
+
+    @field_validator("preferred_periods")
+    @classmethod
+    def _preferred_periods_clean(cls, v: List[str]) -> List[str]:
+        if v is None:
+            return []
+        if not isinstance(v, list):
+            raise ValueError("must be an array of strings")
+        out: List[str] = []
+        for p in v:
+            if not isinstance(p, str) or not p.strip():
+                raise ValueError("items must be non-empty strings")
+            out.append(p.strip())
+        # de-dupe, preserve order
+        seen = set()
+        uniq: List[str] = []
+        for p in out:
+            if p in seen:
+                continue
+            seen.add(p)
+            uniq.append(p)
+        return uniq
+
+
 class TimetableInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     constraints: Constraints = Field(default_factory=Constraints)
     calendar: Calendar = Field(default_factory=Calendar)
+    teachers: List[TeacherConfig] = Field(default_factory=list)
     classes: List[ClassConfig]
 
     @model_validator(mode="after")
@@ -219,6 +316,9 @@ class TimetableInput(BaseModel):
         names = [c.name for c in self.classes]
         if len(set(names)) != len(names):
             raise ValueError("class names must be unique")
+        tnames = [t.name for t in (self.teachers or [])]
+        if len(set(tnames)) != len(tnames):
+            raise ValueError("teacher names must be unique (within teachers[])")
         return self
 
     def validate_references(self) -> None:
@@ -228,6 +328,16 @@ class TimetableInput(BaseModel):
         """
         day_set = set(self.calendar.days)
         period_set = set(self.calendar.periods)
+
+        for t in self.teachers or []:
+            for p in t.preferred_periods:
+                if p not in period_set:
+                    raise ValueError(f"teacher '{t.name}': preferred_period '{p}' not in calendar.periods")
+            for up in t.unavailable_periods:
+                if up.day not in day_set:
+                    raise ValueError(f"teacher '{t.name}': unavailable_periods.day '{up.day}' not in calendar.days")
+                if up.period not in period_set:
+                    raise ValueError(f"teacher '{t.name}': unavailable_periods.period '{up.period}' not in calendar.periods")
 
         for c in self.classes:
             for sem_key, sem in c.semesters.items():
@@ -258,7 +368,7 @@ class TimetableInput(BaseModel):
                             )
 
     @classmethod
-    def load_file(cls, path: str | Path) -> "TimetableInput":
+    def load_file(cls, path: Union[str, Path]) -> "TimetableInput":
         p = Path(path)
         data = json.loads(p.read_text(encoding="utf-8"))
         try:
@@ -273,7 +383,7 @@ class TimetableInput(BaseModel):
         # Keep output close to the input shape (omit Nones where possible)
         return self.model_dump(exclude_none=True)
 
-    def save_file(self, path: str | Path) -> None:
+    def save_file(self, path: Union[str, Path]) -> None:
         p = Path(path)
         p.write_text(json.dumps(self.to_json_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 

@@ -25,6 +25,34 @@
       "P5"
     ]
   },
+  "teachers": [
+    {
+      "name": "Dr_Iyer",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [
+        {
+          "day": "Fri",
+          "period": "P5"
+        }
+      ],
+      "preferred_periods": [
+        "P1",
+        "P2",
+        "P3"
+      ]
+    },
+    {
+      "name": "Dr_Siva",
+      "max_periods_per_week": 10,
+      "unavailable_periods": [
+        {
+          "day": "Fri",
+          "period": "P5"
+        }
+      ],
+      "preferred_periods": []
+    }
+  ],
   "classes": [
     {
       "name": "BSc_ALLIED_MEDICAL",
@@ -33,7 +61,10 @@
           "subjects": [
             {
               "name": "Chemistry_I",
-              "teacher": "Dr_Iyer",
+              "teachers": [
+                "Dr_Iyer"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 2,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -64,7 +95,10 @@
           "subjects": [
             {
               "name": "English_I",
-              "teacher": "Dr_Sharma",
+              "teachers": [
+                "Dr_Sharma"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 3,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -74,7 +108,10 @@
             },
             {
               "name": "Math_I",
-              "teacher": "Dr_Rao",
+              "teachers": [
+                "Dr_Rao"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 5,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -84,7 +121,10 @@
             },
             {
               "name": "Physics_I",
-              "teacher": "Dr_Khan",
+              "teachers": [
+                "Dr_Khan"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -94,8 +134,12 @@
             },
             {
               "name": "Chemistry_I",
-              "teacher": "Dr_Iyer",
-              "periods_per_week": 4,
+              "teachers": [
+                "Dr_Iyer",
+                "Dr_Siva"
+              ],
+              "teaching_mode": "any_of",
+              "periods_per_week": 8,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
               "tags": [],
@@ -104,7 +148,10 @@
             },
             {
               "name": "Physics_Practical_I",
-              "teacher": "Dr_Khan",
+              "teachers": [
+                "Dr_Khan"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 2,
               "min_contiguous_periods": 2,
               "max_contiguous_periods": 3,
@@ -121,8 +168,12 @@
             },
             {
               "name": "Chemistry_Practical_II",
-              "teacher": "Dr_Iyer",
-              "periods_per_week": 6,
+              "teachers": [
+                "Dr_Iyer",
+                "Dr_Siva"
+              ],
+              "teaching_mode": "any_of",
+              "periods_per_week": 2,
               "min_contiguous_periods": 2,
               "max_contiguous_periods": 4,
               "tags": [
@@ -138,7 +189,10 @@
             },
             {
               "name": "Tamil",
-              "teacher": "Prof Vanitha",
+              "teachers": [
+                "Prof Vanitha"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 1,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -159,7 +213,10 @@
           "subjects": [
             {
               "name": "English_II",
-              "teacher": "Dr_Sharma",
+              "teachers": [
+                "Dr_Sharma"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 3,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -169,7 +226,10 @@
             },
             {
               "name": "Math_II",
-              "teacher": "Dr_Rao",
+              "teachers": [
+                "Dr_Rao"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -179,7 +239,10 @@
             },
             {
               "name": "Physics_II",
-              "teacher": "Dr_Khan",
+              "teachers": [
+                "Dr_Khan"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -189,8 +252,11 @@
             },
             {
               "name": "Chemistry_II",
-              "teacher": "Dr_Iyer",
-              "periods_per_week": 4,
+              "teachers": [
+                "Dr_Iyer"
+              ],
+              "teaching_mode": "any_of",
+              "periods_per_week": 2,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
               "tags": [],
@@ -199,7 +265,10 @@
             },
             {
               "name": "Chemistry_Practical_II",
-              "teacher": "Dr_Iyer",
+              "teachers": [
+                "Dr_Iyer"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 2,
               "min_contiguous_periods": 2,
               "max_contiguous_periods": 3,
@@ -221,7 +290,10 @@
           "subjects": [
             {
               "name": "English_III",
-              "teacher": "Dr_Sharma",
+              "teachers": [
+                "Dr_Sharma"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 5,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -231,7 +303,10 @@
             },
             {
               "name": "Stats_I",
-              "teacher": "Dr_Rao",
+              "teachers": [
+                "Dr_Rao"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 5,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -241,7 +316,10 @@
             },
             {
               "name": "Electronics_I",
-              "teacher": "Dr_Khan",
+              "teachers": [
+                "Dr_Khan"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 5,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -251,7 +329,10 @@
             },
             {
               "name": "CompSci_I",
-              "teacher": "Prof_Mehta",
+              "teachers": [
+                "Prof_Mehta"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -261,8 +342,11 @@
             },
             {
               "name": "Chemistry_I",
-              "teacher": "Dr_Iyer",
-              "periods_per_week": 6,
+              "teachers": [
+                "Dr_Iyer"
+              ],
+              "teaching_mode": "any_of",
+              "periods_per_week": 2,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
               "tags": [],
@@ -276,7 +360,10 @@
           "subjects": [
             {
               "name": "English_IV",
-              "teacher": "Dr_Sharma",
+              "teachers": [
+                "Dr_Sharma"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 2,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -286,7 +373,10 @@
             },
             {
               "name": "Stats_II",
-              "teacher": "Dr_Rao",
+              "teachers": [
+                "Dr_Rao"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -296,7 +386,10 @@
             },
             {
               "name": "Electronics_II",
-              "teacher": "Dr_Khan",
+              "teachers": [
+                "Dr_Khan"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 3,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -306,7 +399,10 @@
             },
             {
               "name": "CompSci_II",
-              "teacher": "Prof_Mehta",
+              "teachers": [
+                "Prof_Mehta"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -326,7 +422,10 @@
           "subjects": [
             {
               "name": "CompSci_III",
-              "teacher": "Prof_Mehta",
+              "teachers": [
+                "Prof_Mehta"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -336,7 +435,10 @@
             },
             {
               "name": "DataStructures",
-              "teacher": "Prof_Mehta",
+              "teachers": [
+                "Prof_Mehta"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 5,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -346,7 +448,10 @@
             },
             {
               "name": "NumericalMethods",
-              "teacher": "Dr_Rao",
+              "teachers": [
+                "Dr_Rao"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 5,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -356,7 +461,10 @@
             },
             {
               "name": "AdvancedChemistry",
-              "teacher": "Dr_Iyer",
+              "teachers": [
+                "Dr_Iyer"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 6,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -366,7 +474,10 @@
             },
             {
               "name": "QuantumBasics",
-              "teacher": "Dr_Khan",
+              "teachers": [
+                "Dr_Khan"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 3,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -381,7 +492,10 @@
           "subjects": [
             {
               "name": "CompSci_IV",
-              "teacher": "Prof_Mehta",
+              "teachers": [
+                "Prof_Mehta"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -391,7 +505,10 @@
             },
             {
               "name": "Algorithms",
-              "teacher": "Prof_Mehta",
+              "teachers": [
+                "Prof_Mehta"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 3,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -401,7 +518,10 @@
             },
             {
               "name": "Optimization",
-              "teacher": "Dr_Rao",
+              "teachers": [
+                "Dr_Rao"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 3,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -411,7 +531,10 @@
             },
             {
               "name": "ModernPhysics",
-              "teacher": "Dr_Khan",
+              "teachers": [
+                "Dr_Khan"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 3,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -431,7 +554,10 @@
           "subjects": [
             {
               "name": "AdvancedMath_I",
-              "teacher": "Dr_Rao",
+              "teachers": [
+                "Dr_Rao"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -441,7 +567,10 @@
             },
             {
               "name": "ML_I",
-              "teacher": "Prof_Mehta",
+              "teachers": [
+                "Prof_Mehta"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -451,7 +580,10 @@
             },
             {
               "name": "ResearchMethods_I",
-              "teacher": "Dr_Sharma",
+              "teachers": [
+                "Dr_Sharma"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 2,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -461,7 +593,10 @@
             },
             {
               "name": "HIgher Chemistry",
-              "teacher": "Dr_Iyer",
+              "teachers": [
+                "Dr_Iyer"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 1,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -476,7 +611,10 @@
           "subjects": [
             {
               "name": "AdvancedMath_II",
-              "teacher": "Dr_Rao",
+              "teachers": [
+                "Dr_Rao"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -486,7 +624,10 @@
             },
             {
               "name": "ML_II",
-              "teacher": "Prof_Mehta",
+              "teachers": [
+                "Prof_Mehta"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -496,7 +637,10 @@
             },
             {
               "name": "ResearchMethods_II",
-              "teacher": "Dr_Sharma",
+              "teachers": [
+                "Dr_Sharma"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 2,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -516,7 +660,10 @@
           "subjects": [
             {
               "name": "ThesisSeminar_I",
-              "teacher": "Dr_Sharma",
+              "teachers": [
+                "Dr_Sharma"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 2,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -526,7 +673,10 @@
             },
             {
               "name": "DistributedSystems_I",
-              "teacher": "Prof_Mehta",
+              "teachers": [
+                "Prof_Mehta"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -536,7 +686,10 @@
             },
             {
               "name": "StochasticProcesses_I",
-              "teacher": "Dr_Rao",
+              "teachers": [
+                "Dr_Rao"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 3,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -551,7 +704,10 @@
           "subjects": [
             {
               "name": "ThesisSeminar_II",
-              "teacher": "Dr_Sharma",
+              "teachers": [
+                "Dr_Sharma"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 2,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -561,7 +717,10 @@
             },
             {
               "name": "DistributedSystems_II",
-              "teacher": "Prof_Mehta",
+              "teachers": [
+                "Prof_Mehta"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -571,7 +730,10 @@
             },
             {
               "name": "StochasticProcesses_II",
-              "teacher": "Dr_Rao",
+              "teachers": [
+                "Dr_Rao"
+              ],
+              "teaching_mode": "any_of",
               "periods_per_week": 3,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,

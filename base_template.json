@@ -1,0 +1,83 @@
+{
+  "constraints": {
+    "min_classes_per_week": 0,
+    "min_classes_per_week_by_class": {},
+    "max_periods_per_day_by_tag": {
+      "practical": 2
+    },
+    "teacher_max_periods_per_week": 16
+  },
+  "calendar": {
+    "days": ["Mon", "Tue", "Wed", "Thu", "Fri"],
+    "periods": ["P1", "P2", "P3", "P4", "P5"]
+  },
+  "teachers": [
+    {
+      "name": "Teacher_A",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [
+        { "day": "Fri", "period": "P5" }
+      ],
+      "preferred_periods": ["P1", "P2", "P3"]
+    }
+  ],
+  "classes": [
+    {
+      "name": "BSc_I",
+      "semesters": {
+        "S1": {
+          "subjects": [
+            {
+              "name": "subject_I",
+              "teachers": ["Teacher_A"],
+              "teaching_mode": "any_of",
+              "periods_per_week": 3,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [
+              ],
+              "fixed_sessions": [
+                { "period": "P2", "duration": 1 }
+              ]
+            },
+            {
+              "name": "subject_II",
+              "teachers": ["Teacher_A"],
+              "teaching_mode": "all_of",
+              "periods_per_week": 2,
+              "min_contiguous_periods": 2,
+              "max_contiguous_periods": 2,
+              "tags": ["practical"],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            }
+          ],
+          "blocked_periods": [
+            { "day": "Tue", "period": "P1" }
+          ]
+        },
+        "S2": {
+          "subjects": [
+            {
+              "name": "English_II",
+              "teachers": ["Teacher_A"],
+              "teaching_mode": "any_of",
+              "periods_per_week": 2,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                { "day": "Wed", "period": "P3", "duration": 1 }
+              ]
+            }
+          ],
+          "blocked_periods": []
+        }
+      }
+    }
+  ]
+}
+
+

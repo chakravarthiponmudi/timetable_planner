@@ -15,6 +15,7 @@ import os
 import subprocess
 import sys
 import hashlib
+import copy
 from typing import Any, Dict, List, Optional, Tuple
 
 import streamlit as st
@@ -345,6 +346,23 @@ def _project_root() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
+def _load_base_template() -> Dict[str, Any]:
+    """
+    Load base_template.json from repo root if present; otherwise fall back to new_data().
+    """
+    root = _project_root()
+    path = os.path.join(root, "base_template.json")
+    try:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                return data
+    except Exception:
+        pass
+    return new_data()
+
+
 def _venv_python() -> str:
     """
     Prefer the repo-local .venv python to match the user's expectation.
@@ -454,11 +472,11 @@ def main() -> None:
                     st.error(f"Failed to load JSON: {e}")
 
         if st.button("New (reset)"):
-            st.session_state["data"] = new_data()
+            st.session_state["data"] = _load_base_template()
             data = st.session_state["data"]
             st.session_state["dirty"] = True
             st.session_state["uploaded_sig"] = None
-            st.success("Reset to new template.")
+            st.success("Reset to base_template.json.")
 
         st.divider()
         st.subheader("Save / Export")
@@ -737,7 +755,40 @@ def main() -> None:
                         st.session_state["dirty"] = True
                         st.success(f"Renamed class '{selected}' -> '{newn}'.")
 
-                if st.button("Remove selected class"):
+                st.divider()
+                st.write("Duplicate selected class (copies all semesters/subjects)")
+                default_dup = f"{selected}_COPY"
+                dup_to = st.text_input("New class name (duplicate)", value=default_dup, key="dup_class_to")
+                if st.button("Duplicate class"):
+                    newn = (dup_to or "").strip()
+                    if not newn:
+                        st.error("New class name cannot be empty.")
+                    elif newn in existing:
+                        st.error("A class with that name already exists.")
+                    else:
+                        src = _find_class(data, selected)
+                        if not src:
+                            st.error("Selected class not found.")
+                        else:
+                            cloned = copy.deepcopy(src)
+                            cloned["name"] = newn
+                            data["classes"].append(cloned)
+                            # If there is a per-class min/week override for the source class, copy it to the duplicate too.
+                            constraints = data.get("constraints", {}) or {}
+                            by_class = constraints.get("min_classes_per_week_by_class", {}) or {}
+                            if isinstance(by_class, dict) and selected in by_class and newn not in by_class:
+                                by_class[newn] = by_class[selected]
+                            st.session_state["dirty"] = True
+                            st.success(f"Duplicated class '{selected}' -> '{newn}'.")
+
+                st.divider()
+                st.write("Delete selected class (removes the entire class block)")
+                confirm_delete = st.checkbox(
+                    "I understand this will delete the class and all its semesters/subjects.",
+                    value=False,
+                    key="confirm_delete_class",
+                )
+                if st.button("Delete class", type="secondary", disabled=not confirm_delete):
                     data["classes"] = [c for c in data["classes"] if c.get("name") != selected]
                     constraints = data.get("constraints", {}) or {}
                     by_class = constraints.get("min_classes_per_week_by_class", {}) or {}
@@ -746,7 +797,7 @@ def main() -> None:
                         if not by_class:
                             constraints.pop("min_classes_per_week_by_class", None)
                     st.session_state["dirty"] = True
-                    st.success(f"Removed class '{selected}'.")
+                    st.success(f"Deleted class '{selected}'.")
 
         with right:
             if selected == "(none)":
@@ -836,15 +887,51 @@ def main() -> None:
                             value=(existing_subj.get("name") if existing_subj else ""),
                             key=f"sname__{form_key_base}",
                         )
-                        existing_teachers_list = existing_subj.get("teachers") if existing_subj else None
-                        if not existing_teachers_list and existing_subj and existing_subj.get("teacher"):
-                            existing_teachers_list = [existing_subj.get("teacher")]
-                        s_teachers_csv = st.text_input(
-                            "Teachers (comma-separated)*",
-                            value=", ".join(existing_teachers_list or []) if existing_subj else "",
-                            key=f"steachers__{form_key_base}",
-                            help="Use multiple teachers for shared teaching. Combine with 'Teaching mode' below.",
+                        # Teachers should be selected from the global teachers[] list (UI-friendly).
+                        # Also allow creating a new teacher inline.
+                        data.setdefault("teachers", [])
+                        global_teachers = _teacher_names(data)
+                        existing_teachers_list = list((existing_subj.get("teachers") or []) if existing_subj else [])
+                        # If subject has a teacher not yet in global list, still show it as an option.
+                        for t in existing_teachers_list:
+                            if t and t not in global_teachers:
+                                global_teachers.append(t)
+                        global_teachers = sorted(set(global_teachers), key=lambda s: s.lower())
+
+                        teachers_key = f"steachers__{form_key_base}"
+                        selected_teachers = st.multiselect(
+                            "Teachers*",
+                            options=global_teachers,
+                            default=[t for t in existing_teachers_list if t in global_teachers],
+                            key=teachers_key,
+                            help="Pick one or more teachers. Use Teaching mode to choose OR (any_of) vs AND (all_of).",
                         )
+
+                        add_col1, add_col2 = st.columns([2, 1])
+                        with add_col1:
+                            new_teacher_inline = st.text_input(
+                                "Add new teacher",
+                                value="",
+                                key=f"new_teacher_inline__{form_key_base}",
+                                placeholder="e.g., Prof_Gupta",
+                                label_visibility="collapsed",
+                            )
+                        with add_col2:
+                            if st.button("Add", key=f"add_teacher_inline_btn__{form_key_base}"):
+                                nm = (new_teacher_inline or "").strip()
+                                if not nm:
+                                    st.error("Teacher name cannot be empty.")
+                                elif nm in _teacher_names(data):
+                                    # Already exists globally; just select it.
+                                    st.session_state[teachers_key] = list(dict.fromkeys(list(selected_teachers) + [nm]))
+                                    st.success(f"Selected existing teacher '{nm}'.")
+                                else:
+                                    data["teachers"].append(
+                                        {"name": nm, "max_periods_per_week": None, "unavailable_periods": [], "preferred_periods": []}
+                                    )
+                                    st.session_state[teachers_key] = list(dict.fromkeys(list(selected_teachers) + [nm]))
+                                    st.session_state["dirty"] = True
+                                    st.success(f"Added teacher '{nm}' and selected it.")
                         s_teach_mode = st.selectbox(
                             "Teaching mode",
                             options=["any_of", "all_of"],
@@ -900,7 +987,7 @@ def main() -> None:
 
                     if st.button("Save subject", key=f"save_{selected}_{sem}_{mode}"):
                         name = (s_name or "").strip()
-                        teachers_list = _normalize_tags_csv(s_teachers_csv)  # reuse CSV parser (comma split + trim)
+                        teachers_list = list(selected_teachers or [])
                         if not name or not teachers_list:
                             st.error("Subject name and at least one teacher are required.")
                         elif int(s_min) > int(s_max):

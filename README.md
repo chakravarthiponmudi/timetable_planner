@@ -42,6 +42,15 @@ Optional: also print timetables per teacher:
 python timetable_solver.py --input timetable_input.sample.json --semester S1 --print_teachers
 ```
 
+### Debugging infeasible inputs
+
+If the solver prints `Status: INFEASIBLE`, it will also print **best-effort diagnostics** indicating which constraint group likely caused infeasibility:
+
+- baseline load/teacher clashes
+- `min_classes_per_week`
+- `max_periods_per_day_by_tag`
+- placement constraints (`fixed_sessions`, `allowed_starts`, `blocked_periods`)
+
 ### GUI editor (Tkinter)
 
 You can create/edit the input JSON using a simple GUI that maps 1:1 to the schema expected by `timetable_solver.py`.

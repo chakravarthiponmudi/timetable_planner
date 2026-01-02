@@ -3,6 +3,7 @@ import json
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 import html
+import math
 
 from ortools.sat.python import cp_model
 
@@ -22,6 +23,7 @@ class SubjectSpec:
     teachers: Tuple[str, ...]
     periods_per_week: int
     teaching_mode: str = "any_of"  # "any_of" or "all_of"
+    teacher_share_min_percent: Tuple[Tuple[str, int], ...] = ()
     min_contiguous_periods: int = 1
     max_contiguous_periods: int = 1
     tags: Tuple[str, ...] = ()
@@ -680,6 +682,29 @@ def solve_timetable(
                         # any_of: exactly one teacher if the subject occupies this slot; none if not occupied
                         model.Add(sum(tvars) == occ_subj[(cs.class_name, subj.name, d, p)])
 
+    # Constraint: teacher share minimum percentage (for any_of subjects only)
+    for cs in specs:
+        for subj in cs.subjects:
+            mode = (subj.teaching_mode or "any_of").lower()
+            if mode != "any_of" or not subj.teacher_share_min_percent:
+                continue
+            # For each teacher with a min_percent requirement, ensure they get at least that percentage of periods.
+            total_periods = subj.periods_per_week
+            for teacher, min_percent in subj.teacher_share_min_percent:
+                if teacher not in subj.teachers:
+                    raise ValueError(
+                        f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
+                        f"teacher_share_min_percent includes '{teacher}' but that teacher is not in teachers list"
+                    )
+                # min_periods = ceil(total_periods * min_percent / 100)
+                min_periods = math.ceil(total_periods * min_percent / 100.0)
+                teacher_total = sum(
+                    occ_subj_teacher[(cs.class_name, subj.name, teacher, d, p)]
+                    for d in range(num_days)
+                    for p in range(num_periods)
+                )
+                model.Add(teacher_total >= min_periods)
+
     # Constraint: a teacher cannot teach two classes at the same time
     teachers = sorted({t for cs in specs for subj in cs.subjects for t in subj.teachers})
     for t in teachers:
@@ -1310,6 +1335,10 @@ def main() -> None:
                 name=s.name,
                 teachers=tuple(s.teachers or ([s.teacher] if s.teacher else [])),
                 teaching_mode=str(getattr(s, "teaching_mode", "any_of") or "any_of"),
+                teacher_share_min_percent=tuple(
+                    (tname, int(pct))
+                    for tname, pct in (getattr(s, "teacher_share_min_percent", {}) or {}).items()
+                ),
                 periods_per_week=s.periods_per_week,
                 min_contiguous_periods=s.min_contiguous_periods,
                 max_contiguous_periods=s.max_contiguous_periods,

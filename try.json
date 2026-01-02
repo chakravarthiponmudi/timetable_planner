@@ -38,6 +38,12 @@
         "P2",
         "P3"
       ]
+    },
+    {
+      "name": "Teacher_B",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": []
     }
   ],
   "classes": [
@@ -49,10 +55,15 @@
             {
               "name": "subject_I",
               "teachers": [
-                "Teacher_A"
+                "Teacher_A",
+                "Teacher_B"
               ],
               "teaching_mode": "any_of",
-              "periods_per_week": 3,
+              "teacher_share_min_percent": {
+                "Teacher_A": 80,
+                "Teacher_B": 20
+              },
+              "periods_per_week": 10,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
               "tags": [],
@@ -67,12 +78,14 @@
             {
               "name": "subject_II",
               "teachers": [
-                "Teacher_A"
+                "Teacher_A",
+                "Teacher_B"
               ],
               "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
               "periods_per_week": 2,
               "min_contiguous_periods": 2,
-              "max_contiguous_periods": 2,
+              "max_contiguous_periods": 3,
               "tags": [
                 "practical"
               ],
@@ -95,6 +108,7 @@
                 "Teacher_A"
               ],
               "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
               "periods_per_week": 2,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,

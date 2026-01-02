@@ -346,6 +346,28 @@ def _project_root() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
+def _normalize_teacher_share(data: Dict[str, Any]) -> None:
+    """
+    Recursively normalize teacher_share_min_percent fields to ensure they're always dicts (never None).
+    This prevents validation errors when loading JSON that might have None values.
+    """
+    if isinstance(data, dict):
+        if "teacher_share_min_percent" in data:
+            val = data["teacher_share_min_percent"]
+            if val is None or not isinstance(val, dict):
+                data["teacher_share_min_percent"] = {}
+        if "classes" in data:
+            for cls in data.get("classes", []):
+                if isinstance(cls, dict) and "semesters" in cls:
+                    for sem_obj in cls["semesters"].values():
+                        if isinstance(sem_obj, dict) and "subjects" in sem_obj:
+                            for subj in sem_obj["subjects"]:
+                                if isinstance(subj, dict) and "teacher_share_min_percent" in subj:
+                                    val = subj["teacher_share_min_percent"]
+                                    if val is None or not isinstance(val, dict):
+                                        subj["teacher_share_min_percent"] = {}
+
+
 def _load_base_template() -> Dict[str, Any]:
     """
     Load base_template.json from repo root if present; otherwise fall back to new_data().
@@ -357,6 +379,7 @@ def _load_base_template() -> Dict[str, Any]:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             if isinstance(data, dict):
+                _normalize_teacher_share(data)
                 return data
     except Exception:
         pass
@@ -460,6 +483,7 @@ def main() -> None:
                     loaded = json.loads(raw.decode("utf-8"))
                     if not isinstance(loaded, dict):
                         raise ValueError("Root JSON must be an object.")
+                    _normalize_teacher_share(loaded)
                     st.session_state["data"] = loaded
                     data = st.session_state["data"]
                     st.session_state["dirty"] = False
@@ -941,6 +965,28 @@ def main() -> None:
                             key=f"steachmode__{form_key_base}",
                             help="any_of = OR (one of the listed teachers will be assigned per period). all_of = AND (all listed teachers teach together).",
                         )
+                        # Teacher share min percent (only for any_of with multiple teachers)
+                        if s_teach_mode == "any_of" and len(selected_teachers) > 1:
+                            st.caption("Teacher share (min %): specify minimum percentage of periods each teacher should get")
+                            # Ensure share_current is always a dict, never None
+                            share_raw = existing_subj.get("teacher_share_min_percent") if existing_subj else None
+                            share_current = share_raw if isinstance(share_raw, dict) else {}
+                            share_editor_rows = []
+                            for t in selected_teachers:
+                                share_editor_rows.append({"teacher": t, "min_percent": share_current.get(t, 0)})
+                            share_edited = st.data_editor(
+                                share_editor_rows,
+                                num_rows="fixed",
+                                use_container_width=True,
+                                key=f"share_editor__{form_key_base}",
+                                column_config={
+                                    "teacher": st.column_config.TextColumn("Teacher", disabled=True),
+                                    "min_percent": st.column_config.NumberColumn("Min %", min_value=0, max_value=100, step=1),
+                                },
+                            )
+                            share_dict = {r["teacher"]: int(r["min_percent"]) for r in share_edited if int(r.get("min_percent", 0)) > 0}
+                        else:
+                            share_dict = {}
                     with col2:
                         s_ppw = st.number_input(
                             "Periods per week*",
@@ -1006,6 +1052,11 @@ def main() -> None:
                             tags_list = _normalize_tags_csv(s_tags)
                             if tags_list:
                                 subj_obj["tags"] = tags_list
+                            # Handle teacher_share_min_percent: only include if non-empty dict
+                            # Pydantic expects Dict[str, int] or omit the field (defaults to {})
+                            if share_dict and isinstance(share_dict, dict) and len(share_dict) > 0:
+                                subj_obj["teacher_share_min_percent"] = share_dict
+                            # If share_dict is empty, don't include the field (Pydantic will use default {})
                             if fixed_out:
                                 subj_obj["fixed_sessions"] = fixed_out
                             if allowed_out:

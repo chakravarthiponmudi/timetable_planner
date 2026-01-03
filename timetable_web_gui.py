@@ -157,11 +157,11 @@ def _blocked_periods_editor(
     days: List[str],
     periods: List[str],
 ) -> List[Dict[str, Any]]:
-    st.caption("Blocked periods: disallow any class in these day/period slots.")
+    st.caption("Blocked periods: disallow any class in these day/period slots. Reason is optional.")
     rows = []
     for bp in current or []:
         if isinstance(bp, dict):
-            rows.append({"day": bp.get("day", ""), "period": bp.get("period", "")})
+            rows.append({"day": bp.get("day", ""), "period": bp.get("period", ""), "reason": bp.get("reason", "")})
     edited = st.data_editor(
         rows,
         num_rows="dynamic",
@@ -170,15 +170,20 @@ def _blocked_periods_editor(
         column_config={
             "day": st.column_config.SelectboxColumn("day*", options=list(days)),
             "period": st.column_config.SelectboxColumn("period*", options=list(periods)),
+            "reason": st.column_config.TextColumn("reason (optional)"),
         },
     )
     out: List[Dict[str, Any]] = []
     for r in edited or []:
         day = (r.get("day") or "").strip()
         period = (r.get("period") or "").strip()
+        reason = (r.get("reason") or "").strip()
         if not day or not period:
             continue
-        out.append({"day": day, "period": period})
+        entry = {"day": day, "period": period}
+        if reason:
+            entry["reason"] = reason
+        out.append(entry)
     return out
 
 
@@ -227,12 +232,15 @@ def _validate_for_save(data: Dict[str, Any]) -> None:
                     raise ValueError(f"Class '{c.get('name')}' semester '{sem}': blocked_periods entries must be objects.")
                 day = bp.get("day")
                 period = bp.get("period")
+                reason = bp.get("reason")
                 if not isinstance(day, str) or not day.strip() or not isinstance(period, str) or not period.strip():
                     raise ValueError(f"Class '{c.get('name')}' semester '{sem}': blocked_periods require day+period.")
                 if day not in day_set:
                     raise ValueError(f"Class '{c.get('name')}' semester '{sem}': blocked_periods day '{day}' not in calendar.days.")
                 if period not in period_set:
                     raise ValueError(f"Class '{c.get('name')}' semester '{sem}': blocked_periods period '{period}' not in calendar.periods.")
+                if reason is not None and not isinstance(reason, str):
+                    raise ValueError(f"Class '{c.get('name')}' semester '{sem}': blocked_periods reason must be a string.")
 
             for s in subjects:
                 if not isinstance(s, dict):
@@ -296,6 +304,62 @@ def _validate_for_save(data: Dict[str, Any]) -> None:
 ## SubjectDraft removed; UI now supports full edit/update and writes the final schema directly.
 
 
+def _prettify_subjects_for_display(subjects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Returns a list of flat dictionaries suitable for st.dataframe display,
+    converting complex objects (fixed_sessions, allowed_starts) into strings.
+    """
+    display_list = []
+    for s in subjects:
+        # Shallow copy so we don't mutate the actual data
+        d = s.copy()
+
+        # Flatten fixed_sessions
+        fs = d.get("fixed_sessions")
+        if isinstance(fs, list):
+            parts = []
+            for item in fs:
+                if isinstance(item, dict):
+                    day = item.get("day") or ""
+                    period = item.get("period") or ""
+                    dur = item.get("duration")
+                    seg = f"{day} {period}".strip()
+                    if dur and isinstance(dur, int) and dur > 1:
+                        seg += f" ({dur}x)"
+                    parts.append(seg)
+            d["fixed_sessions"] = ", ".join(parts)
+
+        # Flatten allowed_starts
+        als = d.get("allowed_starts")
+        if isinstance(als, list):
+            parts = []
+            for item in als:
+                if isinstance(item, dict):
+                    day = item.get("day") or ""
+                    period = item.get("period") or ""
+                    parts.append(f"{day} {period}".strip())
+            d["allowed_starts"] = ", ".join(parts)
+
+        # Flatten teachers if list
+        t = d.get("teachers")
+        if isinstance(t, list):
+            d["teachers"] = ", ".join(str(x) for x in t)
+
+        # Flatten tags
+        tags = d.get("tags")
+        if isinstance(tags, list):
+            d["tags"] = ", ".join(str(x) for x in tags)
+
+        # Flatten teacher_share
+        share = d.get("teacher_share_min_percent")
+        if isinstance(share, dict):
+            d["teacher_share_min_percent"] = ", ".join(f"{k}: {v}%" for k, v in share.items())
+
+        display_list.append(d)
+    display_list.sort(key=lambda x: str(x.get("name", "")).lower())
+    return display_list
+
+
 def _get_state() -> Dict[str, Any]:
     if "data" not in st.session_state:
         st.session_state["data"] = new_data()
@@ -344,8 +408,6 @@ def _autosave_to_disk(data: Dict[str, Any], *, path_override: Optional[str] = No
 def _project_root() -> str:
     # Best-effort: directory where this script lives.
     return os.path.dirname(os.path.abspath(__file__))
-
-
 def _normalize_teacher_share(data: Dict[str, Any]) -> None:
     """
     Recursively normalize teacher_share_min_percent fields to ensure they're always dicts (never None).
@@ -866,7 +928,7 @@ def main() -> None:
 
                     st.markdown(f"**Subjects for {selected} / {sem}**")
                     if subjects:
-                        st.dataframe(subjects, use_container_width=True)
+                        st.dataframe(_prettify_subjects_for_display(subjects), use_container_width=True)
                     else:
                         st.warning("No subjects yet for this semester.")
 
@@ -1163,5 +1225,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

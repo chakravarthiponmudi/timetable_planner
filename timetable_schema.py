@@ -25,6 +25,27 @@ class DayPeriod(BaseModel):
         return v
 
 
+class BlockedPeriod(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    day: str
+    period: str
+    reason: Optional[str] = None
+
+    @field_validator("day", "period")
+    @classmethod
+    def _non_empty(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("must be a non-empty string")
+        return v
+
+    @field_validator("reason")
+    @classmethod
+    def _reason_clean(cls, v: Optional[str]) -> Optional[str]:
+        return v.strip() if v and v.strip() else None
+
+
 class FixedSession(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -206,7 +227,7 @@ class Semester(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     subjects: List[Subject]
-    blocked_periods: List[DayPeriod] = Field(default_factory=list)
+    blocked_periods: List[BlockedPeriod] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _subjects_non_empty(self) -> "Semester":
@@ -436,5 +457,3 @@ class TimetableInput(BaseModel):
     def save_file(self, path: Union[str, Path]) -> None:
         p = Path(path)
         p.write_text(json.dumps(self.to_json_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-

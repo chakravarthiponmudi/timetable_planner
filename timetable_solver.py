@@ -36,232 +36,7 @@ class ClassSemesterSpec:
     class_name: str
     semester: str
     subjects: Tuple[SubjectSpec, ...]
-    blocked_periods: Tuple[Tuple[str, str], ...] = ()
-
-
-def _load_input(path: str) -> dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _get_calendar(data: dict) -> Tuple[List[str], List[str]]:
-    cal = data.get("calendar", {})
-    days = cal.get("days", ["Mon", "Tue", "Wed", "Thu", "Fri"])
-    periods = cal.get("periods", ["P1", "P2", "P3", "P4", "P5"])
-    if not days or not periods:
-        raise ValueError("calendar.days and calendar.periods must be non-empty arrays")
-    return list(days), list(periods)
-
-
-def _get_min_classes_per_week_constraints(data: dict) -> Tuple[Optional[int], Dict[str, int]]:
-    constraints = data.get("constraints", {}) or {}
-    global_min = constraints.get("min_classes_per_week")
-    by_class = constraints.get("min_classes_per_week_by_class", {}) or {}
-
-    if global_min is not None and (not isinstance(global_min, int) or global_min < 0):
-        raise ValueError("constraints.min_classes_per_week must be a non-negative int if provided")
-    if not isinstance(by_class, dict):
-        raise ValueError("constraints.min_classes_per_week_by_class must be an object/map if provided")
-    for k, v in by_class.items():
-        if not isinstance(k, str) or not k:
-            raise ValueError("constraints.min_classes_per_week_by_class keys must be non-empty strings")
-        if not isinstance(v, int) or v < 0:
-            raise ValueError(f"constraints.min_classes_per_week_by_class['{k}'] must be a non-negative int")
-
-    return global_min, dict(by_class)
-
-
-def _get_max_periods_per_day_by_tag_constraints(data: dict) -> Dict[str, int]:
-    # Backward-compatible reader: prefer the new period-based key, but accept the old one too.
-    # New: constraints.max_periods_per_day_by_tag  (period-count, based on occ_subj)
-    # Old: constraints.max_sessions_per_day_by_tag (session/block-count, based on y starts)
-    # We return a dict of tag->limit in PERIODS. If the old key is used, we still treat the limit as PERIODS
-    # (so users don't accidentally configure "sessions" thinking they're periods).
-    constraints = data.get("constraints", {}) or {}
-    by_tag = constraints.get("max_periods_per_day_by_tag", None)
-    if by_tag is None:
-        by_tag = constraints.get("max_sessions_per_day_by_tag", {}) or {}
-    if not isinstance(by_tag, dict):
-        raise ValueError("constraints.max_periods_per_day_by_tag must be an object/map if provided")
-    out: Dict[str, int] = {}
-    for tag, limit in by_tag.items():
-        if not isinstance(tag, str) or not tag.strip():
-            raise ValueError("constraints.max_periods_per_day_by_tag keys must be non-empty strings")
-        if not isinstance(limit, int) or limit < 0:
-            raise ValueError(f"constraints.max_periods_per_day_by_tag['{tag}'] must be a non-negative int")
-        out[tag.strip()] = limit
-    return out
-
-
-def _extract_specs(data: dict, semester: str) -> Tuple[List[ClassSemesterSpec], List[str]]:
-    classes = data.get("classes", [])
-    if not isinstance(classes, list) or not classes:
-        raise ValueError("input must contain a non-empty 'classes' array")
-
-    out: List[ClassSemesterSpec] = []
-    skipped: List[str] = []
-    for c in classes:
-        class_name = c.get("name")
-        if not class_name:
-            raise ValueError("each class must have a non-empty 'name'")
-        semesters = c.get("semesters", {})
-        sem = semesters.get(semester)
-        # Support classes that have only one semester: skip classes that do not define the requested semester.
-        if sem is None:
-            skipped.append(class_name)
-            continue
-        blocked_periods = sem.get("blocked_periods", []) or []
-        if not isinstance(blocked_periods, list):
-            raise ValueError(f"class '{class_name}' semester '{semester}': blocked_periods must be an array if provided")
-        cleaned_blocked: List[Tuple[str, str]] = []
-        for bp in blocked_periods:
-            if not isinstance(bp, dict):
-                raise ValueError(
-                    f"class '{class_name}' semester '{semester}': each blocked_periods entry must be an object"
-                )
-            day = bp.get("day")
-            period = bp.get("period")
-            if not isinstance(day, str) or not day.strip() or not isinstance(period, str) or not period.strip():
-                raise ValueError(
-                    f"class '{class_name}' semester '{semester}': each blocked_periods entry needs non-empty 'day' and 'period'"
-                )
-            cleaned_blocked.append((day.strip(), period.strip()))
-        subjects = sem.get("subjects", [])
-        if not isinstance(subjects, list) or not subjects:
-            raise ValueError(f"class '{class_name}' semester '{semester}' must have non-empty 'subjects'")
-
-        specs: List[SubjectSpec] = []
-        for s in subjects:
-            subj_name = s.get("name")
-            teacher = s.get("teacher")
-            ppw = s.get("periods_per_week")
-            spw = s.get("sessions_per_week")  # backward-compat (see below)
-            min_cp = s.get("min_contiguous_periods", 1)
-            max_cp = s.get("max_contiguous_periods", min_cp)
-            tags = s.get("tags", [])
-            allowed_starts = s.get("allowed_starts", []) or []
-            fixed_sessions = s.get("fixed_sessions", []) or []
-            if not subj_name or not teacher:
-                raise ValueError(
-                    f"class '{class_name}' semester '{semester}': each subject needs 'name' and 'teacher'"
-                )
-            # periods_per_week is the primary unit. For backward-compat:
-            # - if periods_per_week is missing and sessions_per_week is present, allow it only for 1-period lectures
-            #   (min=max=1), where sessions == periods.
-            if ppw is None and spw is not None:
-                if min_cp == 1 and max_cp == 1:
-                    ppw = spw
-                else:
-                    raise ValueError(
-                        f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
-                        f"use 'periods_per_week' (not 'sessions_per_week') for multi-period blocks"
-                    )
-            if not isinstance(ppw, int) or ppw <= 0:
-                raise ValueError(
-                    f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
-                    f"'periods_per_week' must be a positive int"
-                )
-            if not isinstance(min_cp, int) or not isinstance(max_cp, int) or min_cp <= 0 or max_cp <= 0:
-                raise ValueError(
-                    f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
-                    f"'min_contiguous_periods'/'max_contiguous_periods' must be positive ints"
-                )
-            if min_cp > max_cp:
-                raise ValueError(
-                    f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
-                    f"min_contiguous_periods ({min_cp}) cannot exceed max_contiguous_periods ({max_cp})"
-                )
-            if tags is None:
-                tags = []
-            if not isinstance(tags, list):
-                raise ValueError(
-                    f"class '{class_name}' semester '{semester}' subject '{subj_name}': 'tags' must be an array if provided"
-                )
-            cleaned_tags: List[str] = []
-            for tag in tags:
-                if not isinstance(tag, str) or not tag.strip():
-                    raise ValueError(
-                        f"class '{class_name}' semester '{semester}' subject '{subj_name}': tags must be non-empty strings"
-                    )
-                cleaned_tags.append(tag.strip())
-
-            if not isinstance(allowed_starts, list):
-                raise ValueError(
-                    f"class '{class_name}' semester '{semester}' subject '{subj_name}': 'allowed_starts' must be an array if provided"
-                )
-            cleaned_allowed_starts: List[Tuple[str, str]] = []
-            for a in allowed_starts:
-                if not isinstance(a, dict):
-                    raise ValueError(
-                        f"class '{class_name}' semester '{semester}' subject '{subj_name}': allowed_starts entries must be objects"
-                    )
-                day = a.get("day")
-                period = a.get("period")
-                if not isinstance(day, str) or not day.strip() or not isinstance(period, str) or not period.strip():
-                    raise ValueError(
-                        f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
-                        f"allowed_starts entries require non-empty 'day' and 'period'"
-                    )
-                cleaned_allowed_starts.append((day.strip(), period.strip()))
-
-            if not isinstance(fixed_sessions, list):
-                raise ValueError(
-                    f"class '{class_name}' semester '{semester}' subject '{subj_name}': 'fixed_sessions' must be an array if provided"
-                )
-            cleaned_fixed: List[FixedSessionSpec] = []
-            for fs in fixed_sessions:
-                if not isinstance(fs, dict):
-                    raise ValueError(
-                        f"class '{class_name}' semester '{semester}' subject '{subj_name}': fixed_sessions entries must be objects"
-                    )
-                period = fs.get("period")
-                day = fs.get("day", None)
-                duration = fs.get("duration", None)
-                if not isinstance(period, str) or not period.strip():
-                    raise ValueError(
-                        f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
-                        f"fixed_sessions entries require non-empty 'period' (day is optional)"
-                    )
-                if day is not None and (not isinstance(day, str) or not day.strip()):
-                    raise ValueError(
-                        f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
-                        f"fixed_sessions.day must be a non-empty string if provided"
-                    )
-                if duration is not None and (not isinstance(duration, int) or duration <= 0):
-                    raise ValueError(
-                        f"class '{class_name}' semester '{semester}' subject '{subj_name}': "
-                        f"fixed_sessions.duration must be a positive int if provided"
-                    )
-                cleaned_fixed.append(
-                    FixedSessionSpec(
-                        day=day.strip() if isinstance(day, str) else None,
-                        period=period.strip(),
-                        duration=duration,
-                    )
-                )
-            specs.append(
-                SubjectSpec(
-                    name=subj_name,
-                    teacher=teacher,
-                    periods_per_week=ppw,
-                    min_contiguous_periods=min_cp,
-                    max_contiguous_periods=max_cp,
-                    tags=tuple(cleaned_tags),
-                    allowed_starts=tuple(cleaned_allowed_starts),
-                    fixed_sessions=tuple(cleaned_fixed),
-                )
-            )
-
-        out.append(
-            ClassSemesterSpec(
-                class_name=class_name,
-                semester=semester,
-                subjects=tuple(specs),
-                blocked_periods=tuple(cleaned_blocked),
-            )
-        )
-
-    return out, skipped
+    blocked_periods: Tuple[Tuple[str, str, str], ...] = ()
 
 
 def _compute_required_periods_by_class(specs: List[ClassSemesterSpec]) -> Dict[str, int]:
@@ -315,12 +90,26 @@ def _precheck_and_explain_obvious_infeasibility(
 
     # 1) Class weekly periods cannot exceed available slots.
     required_by_class = _compute_required_periods_by_class(specs)
-    for cls, req in sorted(required_by_class.items()):
-        if req > num_slots:
+    for cs in specs:
+        req = required_by_class.get(cs.class_name, 0)
+        blocked_set = set((d, p) for d, p, _ in cs.blocked_periods)
+        available_slots = num_slots - len(blocked_set)
+
+        if req > available_slots:
             reasons.append(
-                f"Class '{cls}' requires {req} total periods/week (sum of periods_per_week), "
-                f"but calendar only has {num_slots} slots/week."
+                f"Class '{cs.class_name}' requires {req} total periods/week (sum of periods_per_week), "
+                f"but has {len(blocked_set)} blocked periods, leaving only {available_slots} slots "
+                f"(calendar has {num_slots})."
             )
+
+        # Check for direct overlap between fixed sessions and blocked periods (start only)
+        for subj in cs.subjects:
+            for fs in subj.fixed_sessions:
+                if fs.day and fs.period and (fs.day, fs.period) in blocked_set:
+                    reasons.append(
+                        f"Class '{cs.class_name}' subject '{subj.name}' has a fixed session at {fs.day} {fs.period}, "
+                        f"which is also a blocked period."
+                    )
 
     # 2) min_classes_per_week cannot exceed required periods (since the model fixes total scheduled periods).
     for cs in specs:
@@ -496,7 +285,7 @@ def solve_timetable(
     period_to_idx = {period: i for i, period in enumerate(periods)}
     if enable_placement_constraints:
         for cs in specs:
-            for day_name, period_name in cs.blocked_periods:
+            for day_name, period_name, _reason in cs.blocked_periods:
                 if day_name not in day_to_idx:
                     raise ValueError(
                         f"class '{cs.class_name}' semester '{cs.semester}': blocked_periods day '{day_name}' is not in calendar.days"
@@ -986,8 +775,7 @@ def diagnose_infeasible(
 
 def _format_class_timetable(
     *,
-    class_name: str,
-    subjects: List[str],
+    spec: ClassSemesterSpec,
     days: List[str],
     periods: List[str],
     solver: cp_model.CpSolver,
@@ -1001,12 +789,17 @@ def _format_class_timetable(
     def slot_index(d: int, p: int) -> int:
         return d * num_periods + p
 
+    class_name = spec.class_name
+    subjects = [s.name for s in spec.subjects]
+    blocked_map = {(d, p): r for d, p, r in spec.blocked_periods}
+
     # Build grid: rows=days, cols=periods
     grid: List[List[str]] = []
     for d in range(len(days)):
         row: List[str] = []
         for p in range(len(periods)):
             cell = "-"
+            # Check occupancy
             for subj in subjects:
                 if solver.Value(occ_subj[(class_name, subj, d, p)]) == 1:
                     mode = (subject_teaching_mode.get((class_name, subj)) or "any_of").lower()
@@ -1021,6 +814,11 @@ def _format_class_timetable(
                                 break
                         cell = f"{subj}({chosen})"
                     break
+            # If empty, check if blocked
+            if cell == "-":
+                if (days[d], periods[p]) in blocked_map:
+                    reason = blocked_map[(days[d], periods[p])]
+                    cell = reason if reason else "BLOCKED"
             row.append(cell)
         grid.append(row)
 
@@ -1086,8 +884,7 @@ def _format_teacher_timetable(
 
 def _format_class_timetable_html(
     *,
-    class_name: str,
-    subjects: List[str],
+    spec: ClassSemesterSpec,
     days: List[str],
     periods: List[str],
     solver: cp_model.CpSolver,
@@ -1096,6 +893,10 @@ def _format_class_timetable_html(
     subject_teachers: Dict[Tuple[str, str], Tuple[str, ...]],
     subject_teaching_mode: Dict[Tuple[str, str], str],
 ) -> str:
+    class_name = spec.class_name
+    subjects = [s.name for s in spec.subjects]
+    blocked_map = {(d, p): r for d, p, r in spec.blocked_periods}
+
     # Build grid: rows=days, cols=periods
     rows: List[List[str]] = []
     for d in range(len(days)):
@@ -1116,6 +917,11 @@ def _format_class_timetable_html(
                                 break
                         cell = f"{subj} ({chosen})"
                     break
+            # If empty, check if blocked
+            if cell == "-":
+                if (days[d], periods[p]) in blocked_map:
+                    reason = blocked_map[(days[d], periods[p])]
+                    cell = f"({html.escape(reason)})" if reason else "BLOCKED"
             row.append(cell)
         rows.append(row)
 
@@ -1360,7 +1166,7 @@ def main() -> None:
                 class_name=c.name,
                 semester=args.semester,
                 subjects=subjects,
-                blocked_periods=tuple((bp.day, bp.period) for bp in sem.blocked_periods),
+                blocked_periods=tuple((bp.day, bp.period, bp.reason or "") for bp in sem.blocked_periods),
             )
         )
 
@@ -1435,11 +1241,9 @@ def main() -> None:
     # Print class timetables
     if args.output_format == "html":
         for cs in specs:
-            subjects = [s.name for s in cs.subjects]
             parts.append(
                 _format_class_timetable_html(
-                    class_name=cs.class_name,
-                    subjects=subjects,
+                    spec=cs,
                     days=days,
                     periods=periods,
                     solver=solver,
@@ -1472,10 +1276,8 @@ def main() -> None:
         return
     else:
         for cs in specs:
-            subjects = [s.name for s in cs.subjects]
             print(_format_class_timetable(
-                class_name=cs.class_name,
-                subjects=subjects,
+                spec=cs,
                 days=days,
                 periods=periods,
                 solver=solver,
@@ -1509,6 +1311,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-

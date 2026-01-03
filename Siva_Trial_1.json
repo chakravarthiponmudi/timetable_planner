@@ -1,0 +1,113 @@
+{
+  "constraints": {
+    "min_classes_per_week": 16,
+    "min_classes_per_week_by_class": {},
+    "max_periods_per_day_by_tag": {},
+    "teacher_max_periods_per_week": 16
+  },
+  "calendar": {
+    "days": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
+    "periods": [
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5"
+    ]
+  },
+  "teachers": [
+    {
+      "name": "Dr. VS",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. TGS",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. KVR",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. RG",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. PK",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. RH",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. SI",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. KR",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. VV",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. RP",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. GM",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. AH",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. BB",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. NV",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. JC",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. RL",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. AY",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    }
+  ],
+  "classes": []
+}

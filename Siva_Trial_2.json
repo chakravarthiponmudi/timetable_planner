@@ -1,0 +1,1042 @@
+{
+  "constraints": {
+    "min_classes_per_week_by_class": {},
+    "max_periods_per_day_by_tag": {},
+    "teacher_max_periods_per_week": 16
+  },
+  "calendar": {
+    "days": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
+    "periods": [
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5"
+    ]
+  },
+  "teachers": [
+    {
+      "name": "Dr. VS",
+      "max_periods_per_week": 12,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P2",
+        "P3",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. TGS",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P2",
+        "P3"
+      ]
+    },
+    {
+      "name": "Dr. KVR",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P2",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. RG",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P2",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. PK",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P3",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. RH",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P3",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. SI",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P2",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. KR",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P2",
+        "P3",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. VV",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. RP",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P3",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. GM",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P2",
+        "P3",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. AH",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. BB",
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P2",
+        "P3"
+      ]
+    },
+    {
+      "name": "Dr. NV",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. JC",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. RL",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. AY",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "ZOO",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "PHY",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "MAT",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "BOT",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "TAM1",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "TAM2",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "ENG1",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "ENG2",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "ALD",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "ALDP",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    }
+  ],
+  "classes": [
+    {
+      "name": "I B Sc (Section A)",
+      "semesters": {
+        "S1": {
+          "subjects": [
+            {
+              "name": "General Chemistry-I",
+              "teachers": [
+                "Dr. BB",
+                "Dr. VS"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {
+                "Dr. BB": 60,
+                "Dr. VS": 10
+              },
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Role of Chemistry",
+              "teachers": [
+                "Dr. KVR"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 2,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Dairy chemistry",
+              "teachers": [
+                "Dr. JC"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 2,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Chemistry practical",
+              "teachers": [
+                "Dr. RG",
+                "Dr. KR"
+              ],
+              "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 3,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Fri",
+                  "period": "P1"
+                },
+                {
+                  "day": "Fri",
+                  "period": "P2"
+                },
+                {
+                  "day": "Fri",
+                  "period": "P3"
+                }
+              ]
+            },
+            {
+              "name": "Tamil_1",
+              "teachers": [
+                "TAM1"
+              ],
+              "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 6,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P5"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P4"
+                },
+                {
+                  "day": "Wed",
+                  "period": "P1"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P3"
+                },
+                {
+                  "day": "Fri",
+                  "period": "P4"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P2"
+                }
+              ]
+            },
+            {
+              "name": "English_1",
+              "teachers": [
+                "ENG1"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 6,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P1"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P2"
+                },
+                {
+                  "day": "Wed",
+                  "period": "P3"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P4"
+                },
+                {
+                  "day": "Fri",
+                  "period": "P5"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P3"
+                }
+              ]
+            },
+            {
+              "name": "Allied_2",
+              "teachers": [
+                "ALD"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 6,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P2"
+                },
+                {
+                  "day": "Wed",
+                  "period": "P5"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P1"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P2"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P4"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P5"
+                }
+              ]
+            }
+          ],
+          "blocked_periods": []
+        }
+      }
+    },
+    {
+      "name": "I B Sc (Section B/C)",
+      "semesters": {
+        "S1": {
+          "subjects": [
+            {
+              "name": "General Chemistry-I",
+              "teachers": [
+                "Dr. NV",
+                "Dr. JC"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {
+                "Dr. NV": 60,
+                "Dr. JC": 40
+              },
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Role of Chemistry",
+              "teachers": [
+                "Dr. RL"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 2,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Dairy chemistry",
+              "teachers": [
+                "Dr. GM"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 2,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Chemistry practical",
+              "teachers": [
+                "Dr. GM",
+                "Dr. AH",
+                "Dr. BB"
+              ],
+              "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 3,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Fri",
+                  "period": "P1"
+                },
+                {
+                  "day": "Fri",
+                  "period": "P2"
+                },
+                {
+                  "day": "Fri",
+                  "period": "P3"
+                }
+              ]
+            },
+            {
+              "name": "Tamil_1",
+              "teachers": [
+                "TAM2"
+              ],
+              "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 6,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P5"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P4"
+                },
+                {
+                  "day": "Wed",
+                  "period": "P1"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P3"
+                },
+                {
+                  "day": "Fri",
+                  "period": "P4"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P2"
+                }
+              ]
+            },
+            {
+              "name": "English_1",
+              "teachers": [
+                "ENG2"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 6,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P1"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P2"
+                },
+                {
+                  "day": "Wed",
+                  "period": "P3"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P4"
+                },
+                {
+                  "day": "Fri",
+                  "period": "P5"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P3"
+                }
+              ]
+            },
+            {
+              "name": "Allied_2",
+              "teachers": [
+                "MAT"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 6,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P2"
+                },
+                {
+                  "day": "Wed",
+                  "period": "P5"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P1"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P2"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P4"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P5"
+                }
+              ]
+            }
+          ],
+          "blocked_periods": []
+        }
+      }
+    },
+    {
+      "name": "II B Sc (Section A)",
+      "semesters": {
+        "S1": {
+          "subjects": [
+            {
+              "name": "General Chemistry-III",
+              "teachers": [
+                "Dr. GM"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Naan Mudhalvan",
+              "teachers": [
+                "Dr. NV"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 2,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "EVS",
+              "teachers": [
+                "Dr. RH"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 1,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Chemistry practical",
+              "teachers": [
+                "Dr. KVR",
+                "Dr. RH"
+              ],
+              "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 3,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Sat",
+                  "period": "P1"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P2"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P3"
+                }
+              ]
+            },
+            {
+              "name": "Tamil_3",
+              "teachers": [
+                "TAM1"
+              ],
+              "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 6,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P1"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P5"
+                },
+                {
+                  "day": "Wed",
+                  "period": "P3"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P4"
+                },
+                {
+                  "day": "Fri",
+                  "period": "P1"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P4"
+                }
+              ]
+            },
+            {
+              "name": "English_3",
+              "teachers": [
+                "ENG1"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 6,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P5"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P1"
+                },
+                {
+                  "day": "Wed",
+                  "period": "P2"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P3"
+                },
+                {
+                  "day": "Fri",
+                  "period": "P4"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P5"
+                }
+              ]
+            },
+            {
+              "name": "Allied Physics",
+              "teachers": [
+                "ALDP"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 6,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P4"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P2"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P3"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P4"
+                },
+                {
+                  "day": "Wed",
+                  "period": "P1"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P2"
+                }
+              ]
+            },
+            {
+              "name": "Entrep",
+              "teachers": [
+                "Dr. RG"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 1,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            }
+          ],
+          "blocked_periods": []
+        }
+      }
+    },
+    {
+      "name": "II B Sc (Section B/C)",
+      "semesters": {
+        "S1": {
+          "subjects": [
+            {
+              "name": "General Chemistry-III",
+              "teachers": [
+                "Dr. AH"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Naan Mudhalvan",
+              "teachers": [
+                "Dr. RL"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 2,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "EVS",
+              "teachers": [
+                "Dr. SI"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 1,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Chemistry practical",
+              "teachers": [
+                "Dr. SI",
+                "Dr. RP",
+                "Dr. BB"
+              ],
+              "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 3,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Sat",
+                  "period": "P1"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P2"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P3"
+                }
+              ]
+            },
+            {
+              "name": "Tamil_3",
+              "teachers": [
+                "TAM2"
+              ],
+              "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 6,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P1"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P5"
+                },
+                {
+                  "day": "Wed",
+                  "period": "P3"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P4"
+                },
+                {
+                  "day": "Fri",
+                  "period": "P1"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P4"
+                }
+              ]
+            },
+            {
+              "name": "English_3",
+              "teachers": [
+                "ENG2"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 6,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P5"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P1"
+                },
+                {
+                  "day": "Wed",
+                  "period": "P2"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P3"
+                },
+                {
+                  "day": "Fri",
+                  "period": "P4"
+                },
+                {
+                  "day": "Sat",
+                  "period": "P5"
+                }
+              ]
+            },
+            {
+              "name": "Allied Physics",
+              "teachers": [
+                "PHY"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 6,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Mon",
+                  "period": "P4"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P2"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P3"
+                },
+                {
+                  "day": "Tue",
+                  "period": "P4"
+                },
+                {
+                  "day": "Wed",
+                  "period": "P1"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P2"
+                }
+              ]
+            },
+            {
+              "name": "Entrep",
+              "teachers": [
+                "Dr. PK"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 1,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            }
+          ],
+          "blocked_periods": []
+        }
+      }
+    }
+  ]
+}

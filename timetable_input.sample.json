@@ -1,10 +1,7 @@
 {
   "constraints": {
-    "min_classes_per_week": 0,
     "min_classes_per_week_by_class": {},
-    "max_periods_per_day_by_tag": {
-      "practical": 2
-    },
+    "max_periods_per_day_by_tag": {},
     "teacher_max_periods_per_week": 16
   },
   "calendar": {
@@ -13,7 +10,8 @@
       "Tue",
       "Wed",
       "Thu",
-      "Fri"
+      "Fri",
+      "Sat"
     ],
     "periods": [
       "P1",
@@ -25,14 +23,19 @@
   },
   "teachers": [
     {
-      "name": "Teacher_A",
+      "name": "Dr. VS",
+      "max_periods_per_week": 12,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P2",
+        "P3",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. TGS",
       "max_periods_per_week": 16,
-      "unavailable_periods": [
-        {
-          "day": "Fri",
-          "period": "P5"
-        }
-      ],
+      "unavailable_periods": [],
       "preferred_periods": [
         "P1",
         "P2",
@@ -40,71 +43,149 @@
       ]
     },
     {
-      "name": "Teacher_B",
+      "name": "Dr. KVR",
       "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P2",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. RG",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P2",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. PK",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P3",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. RH",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P3",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. SI",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P2",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. KR",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P2",
+        "P3",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. VV",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. RP",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P1",
+        "P3",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. GM",
+      "max_periods_per_week": 16,
+      "unavailable_periods": [],
+      "preferred_periods": [
+        "P2",
+        "P3",
+        "P4"
+      ]
+    },
+    {
+      "name": "Dr. AH",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. BB",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. NV",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. JC",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. RL",
+      "unavailable_periods": [],
+      "preferred_periods": []
+    },
+    {
+      "name": "Dr. AY",
       "unavailable_periods": [],
       "preferred_periods": []
     }
   ],
   "classes": [
     {
-      "name": "BSc_I",
+      "name": "I B Sc (Section A)",
       "semesters": {
         "S1": {
           "subjects": [
             {
-              "name": "subject_I",
+              "name": "General Chemistry-I",
               "teachers": [
-                "Teacher_A",
-                "Teacher_B"
+                "Dr. BB",
+                "Dr. VS"
               ],
               "teaching_mode": "any_of",
               "teacher_share_min_percent": {
-                "Teacher_A": 80,
-                "Teacher_B": 20
+                "Dr. BB": 60,
+                "Dr. VS": 30
               },
-              "periods_per_week": 10,
+              "periods_per_week": 5,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
               "tags": [],
               "allowed_starts": [],
-              "fixed_sessions": [
-                {
-                  "period": "P2",
-                  "duration": 1
-                }
-              ]
+              "fixed_sessions": []
             },
             {
-              "name": "subject_II",
+              "name": "Role of Chemistry",
               "teachers": [
-                "Teacher_A"
-              ],
-              "teaching_mode": "all_of",
-              "teacher_share_min_percent": {},
-              "periods_per_week": 2,
-              "min_contiguous_periods": 2,
-              "max_contiguous_periods": 2,
-              "tags": [
-                "practical"
-              ],
-              "allowed_starts": [],
-              "fixed_sessions": []
-            }
-          ],
-          "blocked_periods": [
-            {
-              "day": "Tue",
-              "period": "P1"
-            }
-          ]
-        },
-        "S2": {
-          "subjects": [
-            {
-              "name": "English_II",
-              "teachers": [
-                "Teacher_A"
+                "Dr. KVR"
               ],
               "teaching_mode": "any_of",
               "teacher_share_min_percent": {},
@@ -113,13 +194,21 @@
               "max_contiguous_periods": 1,
               "tags": [],
               "allowed_starts": [],
-              "fixed_sessions": [
-                {
-                  "day": "Wed",
-                  "period": "P3",
-                  "duration": 1
-                }
-              ]
+              "fixed_sessions": []
+            },
+            {
+              "name": "Dairy chemistry",
+              "teachers": [
+                "Dr. JC"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 2,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
             }
           ],
           "blocked_periods": []

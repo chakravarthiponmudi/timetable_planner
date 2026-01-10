@@ -943,6 +943,62 @@ def _format_class_timetable_html(
     return "\n".join(out)
 
 
+def _format_class_timetable_json(
+    *,
+    spec: ClassSemesterSpec,
+    days: List[str],
+    periods: List[str],
+    solver: cp_model.CpSolver,
+    occ_subj: Dict[Tuple[str, str, int, int], cp_model.IntVar],
+    occ_subj_teacher: Dict[Tuple[str, str, str, int, int], cp_model.IntVar],
+    subject_teachers: Dict[Tuple[str, str], Tuple[str, ...]],
+    subject_teaching_mode: Dict[Tuple[str, str], str],
+) -> Dict:
+    class_name = spec.class_name
+    subjects = [s.name for s in spec.subjects]
+    blocked_map = {(d, p): r for d, p, r in spec.blocked_periods}
+
+    grid = {}
+    for d_idx, d in enumerate(days):
+        grid[d] = {}
+        for p_idx, p in enumerate(periods):
+            cell_info = {"subject": None, "teacher": None, "type": "free"}
+            
+            # Check occupancy
+            for subj in subjects:
+                if solver.Value(occ_subj[(class_name, subj, d_idx, p_idx)]) == 1:
+                    mode = (subject_teaching_mode.get((class_name, subj)) or "any_of").lower()
+                    tlist = list(subject_teachers.get((class_name, subj)) or ())
+                    
+                    cell_info["subject"] = subj
+                    cell_info["type"] = "class"
+                    
+                    if mode == "all_of":
+                        cell_info["teacher"] = "+".join(tlist) if tlist else "?"
+                    else:
+                        chosen = "?"
+                        for t in tlist:
+                            if solver.Value(occ_subj_teacher[(class_name, subj, t, d_idx, p_idx)]) == 1:
+                                chosen = t
+                                break
+                        cell_info["teacher"] = chosen
+                    break
+            
+            # If empty, check if blocked
+            if cell_info["type"] == "free":
+                if (d, p) in blocked_map:
+                    reason = blocked_map[(d, p)]
+                    cell_info["type"] = "blocked"
+                    cell_info["subject"] = reason if reason else "BLOCKED"
+
+            grid[d][p] = cell_info
+
+    return {
+        "class_name": class_name,
+        "timetable": grid,
+    }
+
+
 def _format_teacher_timetable_html(
     *,
     teacher: str,
@@ -989,6 +1045,46 @@ def _format_teacher_timetable_html(
         out.append("</tr>")
     out.append("</tbody></table>")
     return "\n".join(out)
+
+
+def _format_teacher_timetable_json(
+    *,
+    teacher: str,
+    specs: List[ClassSemesterSpec],
+    days: List[str],
+    periods: List[str],
+    solver: cp_model.CpSolver,
+    occ_subj_teacher: Dict[Tuple[str, str, str, int, int], cp_model.IntVar],
+    total_periods: int,
+) -> Dict:
+    class_subjects: Dict[str, List[str]] = {cs.class_name: [s.name for s in cs.subjects] for cs in specs}
+
+    grid = {}
+    for d_idx, d in enumerate(days):
+        grid[d] = {}
+        for p_idx, p in enumerate(periods):
+            cell_info = {"subject": None, "class": None, "type": "free"}
+            
+            for cs in specs:
+                for subj in class_subjects[cs.class_name]:
+                    key = (cs.class_name, subj, teacher, d_idx, p_idx)
+                    if key not in occ_subj_teacher:
+                        continue
+                    if solver.Value(occ_subj_teacher[key]) == 1:
+                        cell_info["subject"] = subj
+                        cell_info["class"] = cs.class_name
+                        cell_info["type"] = "class"
+                        break
+                if cell_info["type"] != "free":
+                    break
+            
+            grid[d][p] = cell_info
+
+    return {
+        "teacher_name": teacher,
+        "timetable": grid,
+        "total_periods": total_periods,
+    }
 
 
 def _wrap_html_document(body: str) -> str:
@@ -1078,6 +1174,30 @@ def _format_teacher_allocation_html(
             )
         out.append("</tbody></table>")
     return "\n".join(out)
+
+
+def _format_teacher_allocation_json(
+    *,
+    per_teacher: Dict[str, Dict[Tuple[str, str], int]],
+    totals: Dict[str, int],
+) -> Dict:
+    
+    teacher_allocations = []
+    teachers = sorted(set(per_teacher.keys()) | set(totals.keys()))
+
+    for t in teachers:
+        allocations = []
+        rows = sorted(per_teacher.get(t, {}).items(), key=lambda kv: (kv[0][0], kv[0][1]))
+        for (cls, subj), n in rows:
+            allocations.append({"class": cls, "subject": subj, "periods": n})
+        
+        teacher_allocations.append({
+            "teacher": t,
+            "total_periods": totals.get(t, 0),
+            "allocations": allocations
+        })
+        
+    return {"teacher_allocations": teacher_allocations}
 
 
 def main() -> None:

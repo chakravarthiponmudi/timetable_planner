@@ -1,0 +1,5 @@
+I have identified the issue. The `SolverResult.tsx` component was still importing the old `html2canvas` library instead of `html2canvas-pro`. I have updated the import statement to use `html2canvas-pro`.
+
+To apply these changes, please restart your development server. If you are running a production build, you will need to rebuild the application.
+
+After restarting/rebuilding, please try to export the PDF again. If the issue persists, we may need to explore further configuration options for Tailwind CSS or `html2canvas-pro`.

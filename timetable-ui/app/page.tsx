@@ -6,6 +6,7 @@ import CalendarTab from './components/CalendarTab';
 import ConstraintsTab from './components/ConstraintsTab';
 import TeachersTab from './components/TeachersTab';
 import ClassesTab from './components/ClassesTab';
+import SolverResult from './components/SolverResult';
 
 export default function TimetableEditor() {
 
@@ -85,7 +86,7 @@ export default function TimetableEditor() {
 
   
 
-    const [solverResult, setSolverResult] = useState<any>(null);
+    const [solverResult, setSolverResult] = useState<SolverResult | null>(null);
 
   
 
@@ -209,7 +210,7 @@ export default function TimetableEditor() {
         setData(json);
         setError(null);
       } catch (err) {
-        alert("Invalid JSON file");
+        alert(`Invalid JSON file: ${err}`);
       }
     };
     reader.readAsText(file);
@@ -391,11 +392,8 @@ export default function TimetableEditor() {
                     <pre className="whitespace-pre-wrap">{solverResult.error}</pre>
                   </div>
                 )}
-                {solverResult?.html && (
-                  <div>
-                    <h3 className="font-bold mb-2">Result</h3>
-                    <div className="border rounded p-4 bg-gray-50 max-w-full overflow-x-auto" dangerouslySetInnerHTML={{ __html: solverResult.html }} />
-                  </div>
+                {solverResult && !solverResult.error && (
+                  <SolverResult result={solverResult} calendar={data.calendar} />
                 )}
               </div>
             </div>

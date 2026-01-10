@@ -51,3 +51,37 @@ export type TimetableInput = {
   teachers: TeacherConfig[];
   classes: ClassConfig[];
 };
+
+export type TimetableCell = {
+  subject: string | null;
+  teacher: string | null;
+  type: 'free' | 'class' | 'blocked';
+};
+
+export type ClassTimetable = {
+  class_name: string;
+  timetable: Record<string, Record<string, TimetableCell>>;
+};
+
+export type TeacherTimetableCell = {
+  subject: string | null;
+  class: string | null;
+  type: 'free' | 'class';
+};
+
+export type TeacherTimetable = {
+  teacher_name: string;
+  timetable: Record<string, Record<string, TeacherTimetableCell>>;
+  total_periods: number;
+};
+
+export type SolverResultPayload = {
+  timetables: ClassTimetable[];
+  teacher_allocations: TeacherTimetable[];
+};
+
+export type SolverResult = {
+  status: string;
+  objective_value: number;
+  payload: SolverResultPayload;
+};

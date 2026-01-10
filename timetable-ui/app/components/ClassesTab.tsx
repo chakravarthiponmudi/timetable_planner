@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TimetableInput, ClassConfig, Subject, Semester, DayPeriod, FixedSession } from '../types';
+import { TimetableInput, ClassConfig, Subject } from '../types';
 
 interface Props {
   data: TimetableInput;
@@ -277,7 +277,7 @@ export default function ClassesTab({
                       <select
                         className="w-full border p-2 rounded"
                         value={subjectForm.teaching_mode || "any_of"}
-                        onChange={e => setSubjectForm({ ...subjectForm, teaching_mode: e.target.value as any })}
+                        onChange={e => setSubjectForm({ ...subjectForm, teaching_mode: e.target.value as "any_of" | "all_of" })}
                       >
                         <option value="any_of">any_of (OR)</option>
                         <option value="all_of">all_of (AND)</option>
@@ -347,7 +347,7 @@ export default function ClassesTab({
                                   onClick={(e) => {
                                     const currentSelection = { day: d, period: p };
                                     let newSelection = [currentSelection];
-                                    let isCurrentlyBlocked = !!blockedPeriod;
+                                    const isCurrentlyBlocked = !!blockedPeriod;
 
                                     if (e.ctrlKey || e.metaKey) {
                                       newSelection = isEditing

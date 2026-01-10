@@ -17,6 +17,9 @@ from service.timetable_solver import (
     _format_teacher_allocation_html,
     _compute_teacher_allocation_periods,
     _wrap_html_document,
+    _format_class_timetable_json,
+    _format_teacher_allocation_json,
+    _format_teacher_timetable_json,
 )
 
 app = FastAPI()
@@ -30,7 +33,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.get("/app_initial_data")
 async def get_app_initial_data():
     """Returns the initial app data from the timetable_input.sample.json file."""
@@ -41,7 +43,6 @@ async def get_app_initial_data():
         raise HTTPException(status_code=404, detail=f"base_template not found at {sample_file_path}")
     with sample_file_path.open(encoding="utf-8") as f:
         return json.load(f)
-
 
 @app.post("/solve/{semester}")
 async def solve_timetable_endpoint(semester: str, request: TimetableInput):
@@ -146,25 +147,64 @@ async def solve_timetable_endpoint(semester: str, request: TimetableInput):
         )
         raise HTTPException(status_code=400, detail={"message": "Infeasible", "diagnostics": diagnostics})
 
-    parts: List[str] = []
-    for cs in specs:
-        parts.append(
-            _format_class_timetable_html(
-                spec=cs,
-                days=days,
-                periods=periods,
-                solver=solver,
-                occ_subj=ctx["occ_subj"],
-                occ_subj_teacher=ctx["occ_subj_teacher"],
-                subject_teachers=ctx["subject_teachers"],
-                subject_teaching_mode=ctx["subject_teaching_mode"],
-            )
+    # parts: List[str] = []
+    # for cs in specs:
+    #     parts.append(
+    #         _format_class_timetable_html(
+    #             spec=cs,
+    #             days=days,
+    #             periods=periods,
+    #             solver=solver,
+    #             occ_subj=ctx["occ_subj"],
+    #             occ_subj_teacher=ctx["occ_subj_teacher"],
+    #             subject_teachers=ctx["subject_teachers"],
+    #             subject_teaching_mode=ctx["subject_teaching_mode"],
+    #         )
+    #     )
+
+    # per_teacher, totals = _compute_teacher_allocation_periods(
+    #     solver=solver,
+    #     occ_subj_teacher=ctx["occ_subj_teacher"],
+    # )
+    # parts.append(_format_teacher_allocation_html(per_teacher=per_teacher, totals=totals))
+
+    # return {"status": ctx["meta"]["status"], "objective_value": ctx["meta"]["objective_value"], "html": _wrap_html_document("\n\n".join(parts))}
+
+    timetables = [
+        _format_class_timetable_json(
+            spec=cs,
+            days=days,
+            periods=periods,
+            solver=solver,
+            occ_subj=ctx["occ_subj"],
+            occ_subj_teacher=ctx["occ_subj_teacher"],
+            subject_teachers=ctx["subject_teachers"],
+            subject_teaching_mode=ctx["subject_teaching_mode"],
         )
+        for cs in specs
+    ]
 
     per_teacher, totals = _compute_teacher_allocation_periods(
         solver=solver,
         occ_subj_teacher=ctx["occ_subj_teacher"],
     )
-    parts.append(_format_teacher_allocation_html(per_teacher=per_teacher, totals=totals))
 
-    return {"status": ctx["meta"]["status"], "objective_value": ctx["meta"]["objective_value"], "html": _wrap_html_document("\n\n".join(parts))}
+    teacher_timetables = [
+        _format_teacher_timetable_json(
+            teacher=teacher,
+            specs=specs,
+            days=days,
+            periods=periods,
+            solver=solver,
+            occ_subj_teacher=ctx["occ_subj_teacher"],
+            total_periods=totals.get(teacher, 0),
+        )
+        for teacher in ctx["meta"]["teachers"]
+    ]
+
+    payload = {
+        "timetables": timetables,
+        "teacher_allocations": teacher_timetables,
+    }
+
+    return {"status": ctx["meta"]["status"], "objective_value": ctx["meta"]["objective_value"], "payload": payload}

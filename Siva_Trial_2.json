@@ -1037,6 +1037,282 @@
           "blocked_periods": []
         }
       }
+    },
+    {
+      "name": "III B Sc (Section A)",
+      "semesters": {
+        "S1": {
+          "subjects": [
+            {
+              "name": "Organic - I",
+              "teachers": [
+                "Dr. VS",
+                "Dr. GM"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {
+                "Dr. VS": 40,
+                "Dr. GM": 60
+              },
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Inorganic - I",
+              "teachers": [
+                "Dr. RH",
+                "Dr. AH"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {
+                "Dr. RH": 40,
+                "Dr. AH": 60
+              },
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Physical - I",
+              "teachers": [
+                "Dr. TGS",
+                "Dr. JC"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {
+                "Dr. TGS": 60,
+                "Dr. JC": 40
+              },
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Nanochemistry",
+              "teachers": [
+                "Dr. RL"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Pharma",
+              "teachers": [
+                "Dr. KVR",
+                "Dr. VV"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {
+                "Dr. KVR": 60,
+                "Dr. VV": 40
+              },
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Gravimetric",
+              "teachers": [
+                "Dr. VS",
+                "Dr. VV"
+              ],
+              "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 3,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Thu",
+                  "period": "P3"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P4"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P5"
+                }
+              ]
+            },
+            {
+              "name": "Naan Mudhalvan",
+              "teachers": [
+                "Dr. VV"
+              ],
+              "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 2,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            }
+          ],
+          "blocked_periods": []
+        }
+      }
+    },
+    {
+      "name": "III B Sc (Section B/C)",
+      "semesters": {
+        "S1": {
+          "subjects": [
+            {
+              "name": "Organic - I",
+              "teachers": [
+                "Dr. RP",
+                "Dr. RG"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {
+                "Dr. RP": 60,
+                "Dr. RG": 40
+              },
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Inorganic - I",
+              "teachers": [
+                "Dr. SI",
+                "Dr. VV"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {
+                "Dr. SI": 40,
+                "Dr. VV": 60
+              },
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Physical - I",
+              "teachers": [
+                "Dr. KR",
+                "Dr. BB"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {
+                "Dr. KR": 60,
+                "Dr. BB": 40
+              },
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Nanochemistry",
+              "teachers": [
+                "Dr. AY"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Pharma",
+              "teachers": [
+                "Dr. NV",
+                "Dr. PK"
+              ],
+              "teaching_mode": "any_of",
+              "teacher_share_min_percent": {
+                "Dr. NV": 60,
+                "Dr. PK": 40
+              },
+              "periods_per_week": 5,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            },
+            {
+              "name": "Gravimetric",
+              "teachers": [
+                "Dr. BB",
+                "Dr. AY"
+              ],
+              "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 3,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": [
+                {
+                  "day": "Thu",
+                  "period": "P3"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P4"
+                },
+                {
+                  "day": "Thu",
+                  "period": "P5"
+                }
+              ]
+            },
+            {
+              "name": "Naan Mudhalvan",
+              "teachers": [
+                "Dr. JC"
+              ],
+              "teaching_mode": "all_of",
+              "teacher_share_min_percent": {},
+              "periods_per_week": 2,
+              "min_contiguous_periods": 1,
+              "max_contiguous_periods": 1,
+              "tags": [],
+              "allowed_starts": [],
+              "fixed_sessions": []
+            }
+          ],
+          "blocked_periods": []
+        }
+      }
     }
   ]
 }

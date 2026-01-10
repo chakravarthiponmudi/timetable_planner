@@ -1,20 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { TimetableInput } from '../types';
 
 interface Props {
   data: TimetableInput;
   onChange: (data: TimetableInput) => void;
+  days: string;
+  setDays: (days: string) => void;
+  periods: string;
+  setPeriods: (periods: string) => void;
 }
 
-export default function CalendarTab({ data, onChange }: Props) {
-  const [days, setDays] = useState(data.calendar.days.join(', '));
-  const [periods, setPeriods] = useState(data.calendar.periods.join(', '));
-
-  // Sync local state if data changes externally (e.g. file load)
-  useEffect(() => {
-    setDays(data.calendar.days.join(', '));
-    setPeriods(data.calendar.periods.join(', '));
-  }, [data.calendar]);
+export default function CalendarTab({ data, onChange, days, setDays, periods, setPeriods }: Props) {
 
   const handleApply = () => {
     const newDays = days.split(',').map(s => s.trim()).filter(Boolean);

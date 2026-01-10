@@ -4,6 +4,7 @@ export type FixedSession = { day?: string; period: string; duration?: number };
 
 export type Subject = {
   name: string;
+  teacher?: string;
   teachers: string[];
   teaching_mode: "any_of" | "all_of";
   teacher_share_min_percent?: Record<string, number>;
@@ -22,7 +23,7 @@ export type Semester = {
 
 export type ClassConfig = {
   name: string;
-  semesters: Record<string, Semester>;
+  semesters: Partial<Record<"S1" | "S2", Semester>>;
 };
 
 export type TeacherConfig = {
@@ -49,17 +50,4 @@ export type TimetableInput = {
   calendar: Calendar;
   teachers: TeacherConfig[];
   classes: ClassConfig[];
-};
-
-export const DEFAULT_DATA: TimetableInput = {
-  constraints: {
-    max_periods_per_day_by_tag: {},
-    min_classes_per_week_by_class: {},
-  },
-  calendar: {
-    days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-    periods: ["P1", "P2", "P3", "P4", "P5"],
-  },
-  teachers: [],
-  classes: [],
 };

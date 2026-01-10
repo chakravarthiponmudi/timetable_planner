@@ -1,15 +1,203 @@
 "use client";
 
-import React, { useState } from 'react';
-import { TimetableInput, DEFAULT_DATA } from './types';
+import React, { useState, useEffect } from 'react';
+import { TimetableInput, Subject } from './types';
 import CalendarTab from './components/CalendarTab';
 import ConstraintsTab from './components/ConstraintsTab';
 import TeachersTab from './components/TeachersTab';
 import ClassesTab from './components/ClassesTab';
 
 export default function TimetableEditor() {
-  const [data, setData] = useState<TimetableInput>(DEFAULT_DATA);
+
+  const [data, setData] = useState<TimetableInput | null>(null);
+
   const [activeTab, setActiveTab] = useState("calendar");
+
+  const [error, setError] = useState<string | null>(null);
+
+
+
+  // === State lifted from child tabs to preserve UI state across tab switches ===
+
+
+
+  // ClassesTab state
+
+  const [selectedClassName, setSelectedClassName] = useState("");
+
+  const [selectedSem, setSelectedSem] = useState("S1");
+
+  const [editingBlocked, setEditingBlocked] = useState<{ day: string; period: string }[]>([]);
+
+  const [editingSubjectIndex, setEditingSubjectIndex] = useState<number | null>(null);
+
+  const [subjectForm, setSubjectForm] = useState<Partial<Subject>>({});
+
+  const [newClassName, setNewClassName] = useState("");
+
+
+
+  // TeachersTab state
+
+  const [selectedTeacherName, setSelectedTeacherName] = useState<string>("");
+
+  const [newTeacherName, setNewTeacherName] = useState("");
+
+
+
+  // ConstraintsTab state
+
+  const [overrideClass, setOverrideClass] = useState("");
+
+  const [overrideVal, setOverrideVal] = useState(0);
+
+  const [tagName, setTagName] = useState("");
+
+  const [tagLimit, setTagLimit] = useState(1);
+
+  
+
+    // CalendarTab state
+
+  
+
+    const [calendarDays, setCalendarDays] = useState<string | null>(null);
+
+  
+
+    const [calendarPeriods, setCalendarPeriods] = useState<string | null>(null);
+
+  
+
+  
+
+  
+
+    // RunSolver state
+
+  
+
+    const [runSemester, setRunSemester] = useState<"S1" | "S2">("S1");
+
+  
+
+    const [runTimeLimit, setRunTimeLimit] = useState(10);
+
+  
+
+    const [solverResult, setSolverResult] = useState<any>(null);
+
+  
+
+    const [isSolving, setIsSolving] = useState(false);
+
+  
+
+  
+
+
+
+  useEffect(() => {
+
+    const fetchData = async () => {
+
+      try {
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+        if (!apiUrl) {
+
+          setError("API URL is not configured. Please set NEXT_PUBLIC_API_URL environment variable.");
+
+          return;
+
+        }
+
+        const response = await fetch(`${apiUrl}/app_initial_data`);
+
+        if (!response.ok) {
+
+          throw new Error(`Failed to fetch data: ${response.statusText}`);
+
+        }
+
+        const jsonData = await response.json();
+
+        setData(jsonData);
+
+        // Initialize calendar form state after data is loaded
+
+        setCalendarDays(jsonData.calendar.days.join(', '));
+
+        setCalendarPeriods(jsonData.calendar.periods.join(', '));
+
+      } catch (err) {
+
+        setError(err instanceof Error ? err.message : "An unknown error occurred");
+
+      }
+
+        };
+
+        fetchData();
+
+      }, []);
+
+    
+
+      const handleRunSolver = async () => {
+
+        if (!data) return;
+
+        setIsSolving(true);
+
+        setSolverResult(null);
+
+        try {
+
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+          const response = await fetch(`${apiUrl}/solve/${runSemester}`, {
+
+            method: 'POST',
+
+            headers: {
+
+              'Content-Type': 'application/json',
+
+            },
+
+            body: JSON.stringify(data),
+
+          });
+
+    
+
+          const result = await response.json();
+
+          if (!response.ok) {
+
+            throw new Error(result.detail?.message || `HTTP error! status: ${response.status}`);
+
+          }
+
+          setSolverResult(result);
+
+        } catch (err) {
+
+          setSolverResult({ error: err instanceof Error ? err.message : "An unknown error occurred" });
+
+        } finally {
+
+          setIsSolving(false);
+
+        }
+
+      };
+
+    
+
+
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -19,6 +207,7 @@ export default function TimetableEditor() {
       try {
         const json = JSON.parse(evt.target?.result as string);
         setData(json);
+        setError(null);
       } catch (err) {
         alert("Invalid JSON file");
       }
@@ -27,6 +216,7 @@ export default function TimetableEditor() {
   };
 
   const handleDownload = () => {
+    if (!data) return;
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -35,6 +225,25 @@ export default function TimetableEditor() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-red-50 p-8 flex items-center justify-center">
+        <div className="bg-white p-6 rounded shadow-md text-red-700">
+          <h2 className="text-xl font-bold mb-4">Error</h2>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+        <div className="text-lg font-medium text-gray-600">Loading data...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8 font-sans text-gray-900">
@@ -81,32 +290,114 @@ export default function TimetableEditor() {
 
         {/* Tab Content */}
         <main>
-          {activeTab === "calendar" && <CalendarTab data={data} onChange={setData} />}
-          {activeTab === "constraints" && <ConstraintsTab data={data} onChange={setData} />}
-          {activeTab === "teachers" && <TeachersTab data={data} onChange={setData} />}
-          {activeTab === "classes" && <ClassesTab data={data} onChange={setData} />}
-          {activeTab === "preview" && (
+          {activeTab === "calendar" && data && (
+            <CalendarTab
+              data={data}
+              onChange={setData}
+              days={calendarDays ?? ''}
+              setDays={setCalendarDays}
+              periods={calendarPeriods ?? ''}
+              setPeriods={setCalendarPeriods}
+            />
+          )}
+          {activeTab === "constraints" && data && (
+            <ConstraintsTab
+              data={data}
+              onChange={setData}
+              overrideClass={overrideClass}
+              setOverrideClass={setOverrideClass}
+              overrideVal={overrideVal}
+              setOverrideVal={setOverrideVal}
+              tagName={tagName}
+              setTagName={setTagName}
+              tagLimit={tagLimit}
+              setTagLimit={setTagLimit}
+            />
+          )}
+          {activeTab === "teachers" && data && (
+            <TeachersTab
+              data={data}
+              onChange={setData}
+              selectedTeacherName={selectedTeacherName}
+              setSelectedTeacherName={setSelectedTeacherName}
+              newTeacherName={newTeacherName}
+              setNewTeacherName={setNewTeacherName}
+            />
+          )}
+          {activeTab === "classes" && data && (
+            <ClassesTab
+              data={data}
+              onChange={setData}
+              selectedClassName={selectedClassName}
+              setSelectedClassName={setSelectedClassName}
+              newClassName={newClassName}
+              setNewClassName={setNewClassName}
+              selectedSem={selectedSem}
+              setSelectedSem={setSelectedSem}
+              editingBlocked={editingBlocked}
+              setEditingBlocked={setEditingBlocked}
+              editingSubjectIndex={editingSubjectIndex}
+              setEditingSubjectIndex={setEditingSubjectIndex}
+              subjectForm={subjectForm}
+              setSubjectForm={setSubjectForm}
+            />
+          )}
+          {activeTab === "preview" && data && (
             <div className="bg-white p-4 rounded border shadow-sm">
               <pre className="text-xs overflow-auto max-h-[600px]">{JSON.stringify(data, null, 2)}</pre>
             </div>
           )}
-          {activeTab === "run" && (
+          {activeTab === "run" && data && (
             <div className="bg-white p-6 rounded border shadow-sm space-y-6">
               <h2 className="text-xl font-bold">Run Solver</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block font-medium mb-1">Semester</label>
-                  <select className="w-full border p-2 rounded"><option>S1</option><option>S2</option></select>
+                  <select 
+                    className="w-full border p-2 rounded"
+                    value={runSemester}
+                    onChange={e => setRunSemester(e.target.value as "S1" | "S2")}
+                  >
+                    <option>S1</option>
+                    <option>S2</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block font-medium mb-1">Time Limit (s)</label>
-                  <input type="number" defaultValue={10} className="w-full border p-2 rounded" />
+                  <input 
+                    type="number"
+                    className="w-full border p-2 rounded"
+                    value={runTimeLimit}
+                    onChange={e => setRunTimeLimit(parseInt(e.target.value) || 0)}
+                  />
                 </div>
                 <div className="flex items-end">
-                  <button onClick={() => alert("Backend execution not implemented in UI demo.")} className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-bold">Run Solver</button>
+                  <button 
+                    onClick={handleRunSolver} 
+                    disabled={isSolving}
+                    className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-bold disabled:bg-gray-400"
+                  >
+                    {isSolving ? "Solving..." : "Run Solver"}
+                  </button>
                 </div>
               </div>
-              <p className="text-sm text-gray-500">Note: This UI is a frontend-only port. The actual Python solver execution is not connected.</p>
+              
+              {/* Solver Results */}
+              <div className="border-t pt-4">
+                {isSolving && <div className="text-center text-gray-500">Processing... please wait.</div>}
+                {solverResult?.error && (
+                  <div className="bg-red-50 p-4 rounded text-red-800">
+                    <h3 className="font-bold">Error</h3>
+                    <pre className="whitespace-pre-wrap">{solverResult.error}</pre>
+                  </div>
+                )}
+                {solverResult?.html && (
+                  <div>
+                    <h3 className="font-bold mb-2">Result</h3>
+                    <div className="border rounded p-4 bg-gray-50 max-w-full overflow-x-auto" dangerouslySetInnerHTML={{ __html: solverResult.html }} />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </main>

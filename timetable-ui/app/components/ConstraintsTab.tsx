@@ -1,17 +1,32 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { TimetableInput } from '../types';
 
 interface Props {
   data: TimetableInput;
   onChange: (data: TimetableInput) => void;
+  overrideClass: string;
+  setOverrideClass: (val: string) => void;
+  overrideVal: number;
+  setOverrideVal: (val: number) => void;
+  tagName: string;
+  setTagName: (val: string) => void;
+  tagLimit: number;
+  setTagLimit: (val: number) => void;
 }
 
-export default function ConstraintsTab({ data, onChange }: Props) {
+export default function ConstraintsTab({ 
+  data, 
+  onChange,
+  overrideClass,
+  setOverrideClass,
+  overrideVal,
+  setOverrideVal,
+  tagName,
+  setTagName,
+  tagLimit,
+  setTagLimit,
+}: Props) {
   const constraints = data.constraints;
-  const [overrideClass, setOverrideClass] = useState("");
-  const [overrideVal, setOverrideVal] = useState(0);
-  const [tagName, setTagName] = useState("");
-  const [tagLimit, setTagLimit] = useState(1);
 
   const updateConstraints = (updates: Partial<typeof constraints>) => {
     onChange({ ...data, constraints: { ...constraints, ...updates } });

@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { TimetableInput, TeacherConfig } from '../types';
 
 interface Props {
   data: TimetableInput;
   onChange: (data: TimetableInput) => void;
+  selectedTeacherName: string;
+  setSelectedTeacherName: (name: string) => void;
+  newTeacherName: string;
+  setNewTeacherName: (name: string) => void;
 }
 
-export default function TeachersTab({ data, onChange }: Props) {
-  const [selectedTeacherName, setSelectedTeacherName] = useState<string>("");
-  const [newTeacherName, setNewTeacherName] = useState("");
+export default function TeachersTab({ 
+  data, 
+  onChange,
+  selectedTeacherName,
+  setSelectedTeacherName,
+  newTeacherName,
+  setNewTeacherName,
+}: Props) {
 
   const selectedTeacher = data.teachers.find(t => t.name === selectedTeacherName);
 

@@ -7,7 +7,7 @@ import math
 
 from ortools.sat.python import cp_model
 
-from timetable_schema import TimetableInput
+from payloads.timetable_schema import TimetableInput
 
 
 @dataclass(frozen=True)

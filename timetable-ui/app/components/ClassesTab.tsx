@@ -1,24 +1,61 @@
 import React, { useState } from 'react';
-import { TimetableInput, ClassConfig, Subject, Semester } from '../types';
+import { TimetableInput, ClassConfig, Subject, Semester, DayPeriod, FixedSession } from '../types';
 
 interface Props {
   data: TimetableInput;
   onChange: (data: TimetableInput) => void;
+  selectedClassName: string;
+  setSelectedClassName: (name: string) => void;
+  selectedSem: string;
+  setSelectedSem: (sem: string) => void;
+  editingBlocked: { day: string; period: string }[];
+  setEditingBlocked: (blocked: { day: string; period: string }[]) => void;
+  editingSubjectIndex: number | null;
+  setEditingSubjectIndex: (index: number | null) => void;
+  subjectForm: Partial<Subject>;
+  setSubjectForm: (form: Partial<Subject>) => void;
 }
 
 const SEMESTERS = ["S1", "S2"];
 
-export default function ClassesTab({ data, onChange }: Props) {
-  const [selectedClassName, setSelectedClassName] = useState("");
+export default function ClassesTab({ 
+  data, 
+  onChange,
+  selectedClassName,
+  setSelectedClassName,
+  selectedSem,
+  setSelectedSem,
+  editingBlocked,
+  setEditingBlocked,
+  editingSubjectIndex,
+  setEditingSubjectIndex,
+  subjectForm,
+  setSubjectForm,
+}: Props) {
   const [newClassName, setNewClassName] = useState("");
-  const [selectedSem, setSelectedSem] = useState("S1");
-  
-  // Subject Editing State
-  const [editingSubjectIndex, setEditingSubjectIndex] = useState<number | null>(null); // null = adding new
-  const [subjectForm, setSubjectForm] = useState<Partial<Subject>>({});
 
   const selectedClass = data.classes.find(c => c.name === selectedClassName);
   const selectedSemesterData = selectedClass?.semesters[selectedSem];
+
+  const duplicateClass = () => {
+    if (!selectedClass) return;
+    const newName = prompt(`Enter a name for the new duplicated class:`, `${selectedClass.name} (Copy)`);
+    
+    if (!newName || !newName.trim()) {
+      return; // User cancelled or entered empty name
+    }
+    
+    if (data.classes.some(c => c.name === newName)) {
+      alert("A class with this name already exists.");
+      return;
+    }
+
+    const classToDuplicate = JSON.parse(JSON.stringify(selectedClass));
+    classToDuplicate.name = newName;
+
+    onChange({ ...data, classes: [...data.classes, classToDuplicate] });
+    setSelectedClassName(newName);
+  };
 
   const addClass = () => {
     if (!newClassName.trim()) return;
@@ -100,7 +137,16 @@ export default function ClassesTab({ data, onChange }: Props) {
       {/* Sidebar: Class List */}
       <div className="lg:col-span-1 space-y-6 border-r pr-4">
         <div className="space-y-2">
-          <label className="block font-medium">Select Class</label>
+          <div className="flex justify-between items-end">
+            <label className="block font-medium">Select Class</label>
+            <button 
+              onClick={duplicateClass}
+              disabled={!selectedClass}
+              className="text-sm text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+            >
+              Duplicate
+            </button>
+          </div>
           <select className="w-full border p-2 rounded" value={selectedClassName} onChange={e => setSelectedClassName(e.target.value)}>
             <option value="">(none)</option>
             {data.classes.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
@@ -278,30 +324,105 @@ export default function ClassesTab({ data, onChange }: Props) {
                 {/* Blocked Periods for Class/Semester */}
                 <div className="border-t pt-4">
                   <h3 className="font-bold mb-2">Blocked Periods</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {data.calendar.days.map(d => (
-                      <div key={d} className="flex flex-col gap-1 border p-2 rounded">
-                        <span className="text-xs font-bold text-center">{d}</span>
-                        {data.calendar.periods.map(p => {
-                          const isBlocked = selectedSemesterData.blocked_periods.some(bp => bp.day === d && bp.period === p);
-                          return (
-                            <button
-                              key={p}
-                              onClick={() => {
-                                const newBlocked = isBlocked
-                                  ? selectedSemesterData.blocked_periods.filter(bp => !(bp.day === d && bp.period === p))
-                                  : [...selectedSemesterData.blocked_periods, { day: d, period: p }];
-                                const newSems = { ...selectedClass.semesters };
-                                newSems[selectedSem] = { ...selectedSemesterData, blocked_periods: newBlocked };
-                                updateClass({ semesters: newSems });
-                              }}
-                              className={`text-xs px-2 py-1 rounded ${isBlocked ? 'bg-red-500 text-white' : 'bg-gray-100'}`}
-                            >{p}</button>
-                          );
-                        })}
-                      </div>
-                    ))}
+                  <p className="text-sm text-gray-500 mb-2">Click a slot to block it. Use Ctrl+Click (or Cmd+Click) to select multiple slots.</p>
+                  <div className="overflow-x-auto border rounded">
+                    <table className="w-full text-center text-sm">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="p-2 w-16">Day</th>
+                          {data.calendar.periods.map(p => <th key={p} className="p-2">{p}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.calendar.days.map(d => (
+                          <tr key={d} className="border-t">
+                            <td className="p-2 font-medium bg-gray-50">{d}</td>
+                            {data.calendar.periods.map(p => {
+                              const blockedPeriod = selectedSemesterData.blocked_periods.find(bp => bp.day === d && bp.period === p);
+                              const isEditing = editingBlocked.some(e => e.day === d && e.period === p);
+
+                              return (
+                                <td
+                                  key={p}
+                                  onClick={(e) => {
+                                    const currentSelection = { day: d, period: p };
+                                    let newSelection = [currentSelection];
+                                    let isCurrentlyBlocked = !!blockedPeriod;
+
+                                    if (e.ctrlKey || e.metaKey) {
+                                      newSelection = isEditing
+                                        ? editingBlocked.filter(item => item.day !== d || item.period !== p)
+                                        : [...editingBlocked, currentSelection];
+                                    }
+                                    
+                                    setEditingBlocked(newSelection);
+
+                                    // If the primary clicked cell is not blocked, block it.
+                                    if (!isCurrentlyBlocked) {
+                                      const newBlocked = [...selectedSemesterData.blocked_periods, { day: d, period: p, reason: '' }];
+                                      const newSems = { ...selectedClass.semesters, [selectedSem]: { ...selectedSemesterData, blocked_periods: newBlocked } };
+                                      updateClass({ semesters: newSems });
+                                    }
+                                  }}
+                                  className={`p-0 cursor-pointer hover:bg-yellow-100 ${isEditing ? 'outline-2 outline-blue-500 outline' : ''}`}
+                                >
+                                  <div className={`w-full h-full p-2 ${blockedPeriod ? 'bg-red-200' : 'bg-green-50'}`}>
+                                    {blockedPeriod?.reason || (blockedPeriod ? <span className="text-gray-500 italic">Blocked</span> : <span className="text-gray-400">-</span>)}
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
+
+                  {/* Editor for selected blocked period(s) */}
+                  {editingBlocked.length > 0 && (
+                    <div className="mt-4 p-4 border rounded bg-gray-50 space-y-3">
+                      <h4 className="font-bold">Editing {editingBlocked.length} slot(s)</h4>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Reason (optional)</label>
+                        <input
+                          type="text"
+                          className="w-full border p-2 rounded"
+                          placeholder="Enter reason for all selected"
+                          value={
+                            // If all selected have the same reason, show it. Otherwise, show empty.
+                            editingBlocked.every(b => selectedSemesterData.blocked_periods.find(bp => bp.day === b.day && bp.period === b.period)?.reason === selectedSemesterData.blocked_periods.find(bp => bp.day === editingBlocked[0].day && bp.period === editingBlocked[0].period)?.reason)
+                              ? selectedSemesterData.blocked_periods.find(bp => bp.day === editingBlocked[0].day && bp.period === editingBlocked[0].period)?.reason || ""
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const reason = e.target.value;
+                            const newBlocked = selectedSemesterData.blocked_periods.map(bp => {
+                              if (editingBlocked.some(sel => sel.day === bp.day && sel.period === bp.period)) {
+                                return { ...bp, reason: reason };
+                              }
+                              return bp;
+                            });
+                            
+                            const newSems = { ...selectedClass.semesters, [selectedSem]: { ...selectedSemesterData, blocked_periods: newBlocked } };
+                            updateClass({ semesters: newSems });
+                          }}
+                        />
+                      </div>
+                       <button
+                          onClick={() => {
+                            const newBlocked = selectedSemesterData.blocked_periods.filter(bp => 
+                              !editingBlocked.some(e => e.day === bp.day && e.period === bp.period)
+                            );
+                            const newSems = { ...selectedClass.semesters, [selectedSem]: { ...selectedSemesterData, blocked_periods: newBlocked } };
+                            updateClass({ semesters: newSems });
+                            setEditingBlocked([]);
+                          }}
+                          className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+                        >
+                          Unblock Selected
+                        </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

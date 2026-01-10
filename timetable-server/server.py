@@ -38,7 +38,7 @@ async def get_app_initial_data():
     """Returns the initial app data from the timetable_input.sample.json file."""
     # The server is run from the `timetable-server` directory.
     # The sample file is in the parent directory.
-    sample_file_path = Path("metadata/base_template.json")
+    sample_file_path = Path(__file__).parent / "metadata" / "base_template.json"
     if not sample_file_path.is_file():
         raise HTTPException(status_code=404, detail=f"base_template not found at {sample_file_path}")
     with sample_file_path.open(encoding="utf-8") as f:

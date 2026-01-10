@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { TimetableInput, ClassConfig, Subject } from '../types';
 
+const SEMESTERS = ["S1", "S2"] as const;
+type SemesterType = typeof SEMESTERS[number];
+
 interface Props {
   data: TimetableInput;
   onChange: (data: TimetableInput) => void;
@@ -15,8 +18,6 @@ interface Props {
   subjectForm: Partial<Subject>;
   setSubjectForm: (form: Partial<Subject>) => void;
 }
-
-const SEMESTERS = ["S1", "S2"];
 
 export default function ClassesTab({ 
   data, 
@@ -89,8 +90,8 @@ export default function ClassesTab({
     if (!subjectForm.name || !subjectForm.teachers?.length) return alert("Name and Teacher required");
 
     const newSubj = {
-      name: subjectForm.name,
-      teachers: subjectForm.teachers,
+      name: subjectForm.name || "",
+      teachers: subjectForm.teachers || [],
       teaching_mode: subjectForm.teaching_mode || "any_of",
       periods_per_week: subjectForm.periods_per_week || 1,
       min_contiguous_periods: subjectForm.min_contiguous_periods || 1,

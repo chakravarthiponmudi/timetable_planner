@@ -1,0 +1,23 @@
+# Ignore directories
+node_modules
+.next
+__pycache__
+.git
+.venv
+.vscode
+.streamlit
+
+# Ignore specific files
+*.log
+*.swp
+dockerFile
+user_instruction.txt
+sample.py
+sample.txt
+run.sh
+run_server.sh
+Siva_Trial_1.json
+Siva_Trial_2.json
+Siva_Trial_3.json
+try.json
+try2.json

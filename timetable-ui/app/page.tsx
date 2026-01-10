@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { TimetableInput, Subject } from './types';
+import { TimetableInput, Subject, SolverResult } from './types';
 import CalendarTab from './components/CalendarTab';
 import ConstraintsTab from './components/ConstraintsTab';
 import TeachersTab from './components/TeachersTab';
 import ClassesTab from './components/ClassesTab';
-import SolverResult from './components/SolverResult';
+import SolverResultComponent from './components/SolverResult';
 
 export default function TimetableEditor() {
 
@@ -186,7 +186,8 @@ export default function TimetableEditor() {
 
         } catch (err) {
 
-          setSolverResult({ error: err instanceof Error ? err.message : "An unknown error occurred" });
+          setError(err instanceof Error ? err.message : "An unknown error occurred");
+          setSolverResult(null);
 
         } finally {
 
@@ -331,8 +332,8 @@ export default function TimetableEditor() {
               onChange={setData}
               selectedClassName={selectedClassName}
               setSelectedClassName={setSelectedClassName}
-              newClassName={newClassName}
-              setNewClassName={setNewClassName}
+              // newClassName={newClassName}
+              // setNewClassName={setNewClassName}
               selectedSem={selectedSem}
               setSelectedSem={setSelectedSem}
               editingBlocked={editingBlocked}
@@ -386,14 +387,9 @@ export default function TimetableEditor() {
               {/* Solver Results */}
               <div className="border-t pt-4">
                 {isSolving && <div className="text-center text-gray-500">Processing... please wait.</div>}
-                {solverResult?.error && (
-                  <div className="bg-red-50 p-4 rounded text-red-800">
-                    <h3 className="font-bold">Error</h3>
-                    <pre className="whitespace-pre-wrap">{solverResult.error}</pre>
-                  </div>
-                )}
-                {solverResult && !solverResult.error && (
-                  <SolverResult result={solverResult} calendar={data.calendar} />
+              
+                {solverResult && (
+                  <SolverResultComponent result={solverResult} calendar={data.calendar} />
                 )}
               </div>
             </div>

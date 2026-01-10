@@ -6,8 +6,14 @@ import TeacherAllocationResult from './TeacherAllocationResult';
 // Make sure to install them: npm install jspdf html2canvas
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
+import { SolverResult as SolverResultType, Calendar } from '../types';
 
-const SolverResult = ({ result, calendar }) => {
+interface SolverResultProps {
+  result: SolverResultType | null;
+  calendar: Calendar;
+}
+
+const SolverResult = ({ result, calendar }: SolverResultProps) => {
   const contentRef = useRef(null);
 
   if (!result) {

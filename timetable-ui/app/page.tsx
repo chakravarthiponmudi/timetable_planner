@@ -114,7 +114,7 @@ export default function TimetableEditor() {
 
         }
 
-        const response = await fetch(`${apiUrl}/app_initial_data`);
+        const response = await fetch(`/app_initial_data`);
 
         if (!response.ok) {
 
@@ -158,7 +158,7 @@ export default function TimetableEditor() {
 
           const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-          const response = await fetch(`${apiUrl}/solve/${runSemester}`, {
+          const response = await fetch(`/solve/${runSemester}`, {
 
             method: 'POST',
 

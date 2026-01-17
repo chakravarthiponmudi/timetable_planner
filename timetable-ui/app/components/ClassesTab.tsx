@@ -16,7 +16,7 @@ interface Props {
   editingSubjectIndex: number | null;
   setEditingSubjectIndex: (index: number | null) => void;
   subjectForm: Partial<Subject>;
-  setSubjectForm: (form: Partial<Subject>) => void;
+  setSubjectForm: React.Dispatch<React.SetStateAction<Partial<Subject>>>;
 }
 
 export default function ClassesTab({ 
@@ -244,7 +244,7 @@ export default function ClassesTab({
                       <input
                         className="w-full border p-2 rounded"
                         value={subjectForm.name || ""}
-                        onChange={e => setSubjectForm({ ...subjectForm, name: e.target.value })}
+                        onChange={e => setSubjectForm(prev => ({ ...prev, name: e.target.value }))}
                       />
                     </div>
                     <div>
@@ -255,13 +255,68 @@ export default function ClassesTab({
                         value={subjectForm.teachers || []}
                         onChange={e => {
                           const selected = Array.from(e.target.selectedOptions, option => option.value);
-                          setSubjectForm({ ...subjectForm, teachers: selected });
+                          setSubjectForm(prevForm => {
+                            const newShares = { ...(prevForm.teacher_share_min_percent || {}) };
+                            // Remove shares for teachers that are no longer selected
+                            Object.keys(newShares).forEach(teacher => {
+                              if (!selected.includes(teacher)) {
+                                delete newShares[teacher];
+                              }
+                            });
+                            return {
+                              ...prevForm,
+                              teachers: selected,
+                              teacher_share_min_percent: newShares
+                            };
+                          });
                         }}
                       >
                         {data.teachers.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
                       </select>
                       <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple.</p>
                     </div>
+
+                    {subjectForm.teachers && subjectForm.teachers.length > 1 && subjectForm.teaching_mode === 'any_of' && (
+                      <div className="md:col-span-2 space-y-2 p-3 bg-gray-100 rounded-lg border">
+                        <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Teacher Share Minimum %</label>
+                        <p className="text-xs text-gray-500 mb-2">Assign the minimum percentage of this subject's periods that each selected teacher must teach. The total does not need to sum to 100.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2">
+                          {subjectForm.teachers.map(teacher => (
+                            <div key={teacher} className="flex items-center justify-between gap-2">
+                              <label className="text-sm" htmlFor={`teacher-share-${teacher}`}>{teacher}</label>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  id={`teacher-share-${teacher}`}
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  className="w-20 border p-1 rounded"
+                                  placeholder="e.g. 50"
+                                  value={subjectForm.teacher_share_min_percent?.[teacher] || ""}
+                                  onChange={e => {
+                                    const value = e.target.value;
+                                    const newShares = { ...(subjectForm.teacher_share_min_percent || {}) };
+                                    if (value === "" || value === null) {
+                                      delete newShares[teacher];
+                                    } else {
+                                      const numValue = parseInt(value, 10);
+                                      if (numValue >= 0 && numValue <= 100) {
+                                        newShares[teacher] = numValue;
+                                      }
+                                    }
+                                    setSubjectForm(prev => ({
+                                      ...prev,
+                                      teacher_share_min_percent: newShares,
+                                    }));
+                                  }}
+                                />
+                                <span className="text-sm text-gray-500">%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     
                     <div>
                       <label className="block text-xs font-bold uppercase text-gray-500">Periods / Week</label>
@@ -269,7 +324,7 @@ export default function ClassesTab({
                         type="number"
                         className="w-full border p-2 rounded"
                         value={subjectForm.periods_per_week || 1}
-                        onChange={e => setSubjectForm({ ...subjectForm, periods_per_week: parseInt(e.target.value) || 1 })}
+                        onChange={e => setSubjectForm(prev => ({ ...prev, periods_per_week: parseInt(e.target.value) || 1 }))}
                       />
                     </div>
 
@@ -278,7 +333,7 @@ export default function ClassesTab({
                       <select
                         className="w-full border p-2 rounded"
                         value={subjectForm.teaching_mode || "any_of"}
-                        onChange={e => setSubjectForm({ ...subjectForm, teaching_mode: e.target.value as "any_of" | "all_of" })}
+                        onChange={e => setSubjectForm(prev => ({ ...prev, teaching_mode: e.target.value as "any_of" | "all_of" }))}
                       >
                         <option value="any_of">any_of (OR)</option>
                         <option value="all_of">all_of (AND)</option>
@@ -291,7 +346,7 @@ export default function ClassesTab({
                         type="number"
                         className="w-full border p-2 rounded"
                         value={subjectForm.min_contiguous_periods || 1}
-                        onChange={e => setSubjectForm({ ...subjectForm, min_contiguous_periods: parseInt(e.target.value) || 1 })}
+                        onChange={e => setSubjectForm(prev => ({ ...prev, min_contiguous_periods: parseInt(e.target.value) || 1 }))}
                       />
                     </div>
                     <div>
@@ -300,7 +355,7 @@ export default function ClassesTab({
                         type="number"
                         className="w-full border p-2 rounded"
                         value={subjectForm.max_contiguous_periods || 1}
-                        onChange={e => setSubjectForm({ ...subjectForm, max_contiguous_periods: parseInt(e.target.value) || 1 })}
+                        onChange={e => setSubjectForm(prev => ({ ...prev, max_contiguous_periods: parseInt(e.target.value) || 1 }))}
                       />
                     </div>
                   </div>

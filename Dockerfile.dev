@@ -1,0 +1,42 @@
+# Use a base image with Python
+FROM python:3.13-bookworm
+
+# 1. Install system-level dependencies.
+# This layer is cached and only re-runs if this command changes.
+RUN apt-get update && \
+    apt-get install -y curl nginx && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# 2. Install Python dependencies
+# First, copy only the requirements file.
+# This leverages Docker's layer caching. The following 'RUN' command will only be
+# re-executed if the 'requirements.txt' file has changed.
+WORKDIR /app/server
+COPY ./timetable-server/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 3. Install Node.js dependencies
+# Similarly, copy only the package manifests.
+# This command will only be re-executed if 'package.json' or 'package-lock.json'
+# have changed.
+WORKDIR /app/ui
+COPY ./timetable-ui/package.json ./timetable-ui/package-lock.json ./
+RUN npm ci
+
+# 4. Copy configuration files.
+# This is done after dependency installation to avoid cache busting.
+COPY nginx.dev.conf /etc/nginx/nginx.conf
+
+# Use an anonymous volume for node_modules to avoid being overwritten by the host mount
+VOLUME /app/ui/node_modules
+
+# Set env var for the API URL for the Next.js app.
+ENV NEXT_PUBLIC_API_URL=http://localhost:8080
+
+# Expose ports
+EXPOSE 80 8000 3000
+
+# Command to run all three services
+CMD ["bash", "-c", "nginx & cd /app/server && uvicorn server:app --host 0.0.0.0 --port 8000 --reload & cd /app/ui && npm run dev"]

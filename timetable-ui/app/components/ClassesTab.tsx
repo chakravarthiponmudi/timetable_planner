@@ -58,6 +58,36 @@ export default function ClassesTab({
     setSelectedClassName(newName);
   };
 
+  const renameClass = () => {
+    if (!selectedClass) return;
+    const newName = prompt(`Enter new name for class "${selectedClass.name}":`, selectedClass.name);
+    
+    if (!newName || !newName.trim() || newName === selectedClass.name) {
+      return;
+    }
+    
+    if (data.classes.some(c => c.name === newName)) {
+      alert("A class with this name already exists.");
+      return;
+    }
+
+    const newClasses = data.classes.map(c => 
+      c.name === selectedClassName ? { ...c, name: newName } : c
+    );
+
+    onChange({ ...data, classes: newClasses });
+    setSelectedClassName(newName);
+  };
+
+  const deleteClass = () => {
+    if (!selectedClass) return;
+    if (!confirm(`Are you sure you want to delete the class "${selectedClass.name}"?`)) return;
+
+    const newClasses = data.classes.filter(c => c.name !== selectedClassName);
+    onChange({ ...data, classes: newClasses });
+    setSelectedClassName("");
+  };
+
   const addClass = () => {
     if (!newClassName.trim()) return;
     if (data.classes.some(c => c.name === newClassName)) return alert("Class exists");
@@ -140,13 +170,29 @@ export default function ClassesTab({
         <div className="space-y-2">
           <div className="flex justify-between items-end">
             <label className="block font-medium">Select Class</label>
-            <button 
-              onClick={duplicateClass}
-              disabled={!selectedClass}
-              className="text-sm text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline"
-            >
-              Duplicate
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={renameClass}
+                disabled={!selectedClass}
+                className="text-sm text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+              >
+                Rename
+              </button>
+              <button 
+                onClick={duplicateClass}
+                disabled={!selectedClass}
+                className="text-sm text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+              >
+                Duplicate
+              </button>
+              <button 
+                onClick={deleteClass}
+                disabled={!selectedClass}
+                className="text-sm text-red-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+              >
+                Delete
+              </button>
+            </div>
           </div>
           <select className="w-full border p-2 rounded" value={selectedClassName} onChange={e => setSelectedClassName(e.target.value)}>
             <option value="">(none)</option>

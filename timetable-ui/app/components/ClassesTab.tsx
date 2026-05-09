@@ -255,6 +255,7 @@ export default function ClassesTab({
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="p-2">Name</th>
+                          <th className="p-2">Tag</th>
                           <th className="p-2">Teachers</th>
                           <th className="p-2">Periods</th>
                           <th className="p-2">Actions</th>
@@ -264,6 +265,15 @@ export default function ClassesTab({
                         {selectedSemesterData.subjects.map((subj, idx) => (
                           <tr key={idx} className="border-t hover:bg-gray-50">
                             <td className="p-2 font-medium">{subj.name}</td>
+                            <td className="p-2">
+                              {subj.tags && subj.tags.length > 0 ? (
+                                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                                  {subj.tags[0]}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
                             <td className="p-2">{subj.teachers.join(', ')}</td>
                             <td className="p-2">{subj.periods_per_week}</td>
                             <td className="p-2 flex gap-2">
@@ -292,6 +302,22 @@ export default function ClassesTab({
                         value={subjectForm.name || ""}
                         onChange={e => setSubjectForm(prev => ({ ...prev, name: e.target.value }))}
                       />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-gray-500">Tag</label>
+                      <select
+                        className="w-full border p-2 rounded"
+                        value={subjectForm.tags?.[0] || ""}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setSubjectForm(prev => ({ ...prev, tags: val ? [val] : [] }));
+                        }}
+                      >
+                        <option value="">(none)</option>
+                        {data.constraints.max_periods_per_day_by_tag && Object.keys(data.constraints.max_periods_per_day_by_tag).map(tag => (
+                          <option key={tag} value={tag}>{tag}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs font-bold uppercase text-gray-500">Teachers</label>

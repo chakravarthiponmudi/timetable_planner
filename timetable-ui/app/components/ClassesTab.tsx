@@ -91,7 +91,11 @@ export default function ClassesTab({
   const addClass = () => {
     if (!newClassName.trim()) return;
     if (data.classes.some(c => c.name === newClassName)) return alert("Class exists");
-    const newC: ClassConfig = { name: newClassName, semesters: { "S1": { subjects: [], blocked_periods: [] } } };
+    const newC: ClassConfig = { 
+      name: newClassName, 
+      num_sections: 1,
+      semesters: { "S1": { subjects: [], blocked_periods: [] } } 
+    };
     onChange({ ...data, classes: [...data.classes, newC] });
     setNewClassName("");
     setSelectedClassName(newC.name);
@@ -119,10 +123,10 @@ export default function ClassesTab({
     if (!selectedClass || !selectedSemesterData) return;
     if (!subjectForm.name || !subjectForm.teachers?.length) return alert("Name and Teacher required");
 
-    const newSubj = {
+    const newSubj: Subject = {
       name: subjectForm.name || "",
       teachers: subjectForm.teachers || [],
-      teaching_mode: subjectForm.teaching_mode || "any_of",
+      teachers_required: subjectForm.teachers_required || 1,
       periods_per_week: subjectForm.periods_per_week || 1,
       min_contiguous_periods: subjectForm.min_contiguous_periods || 1,
       max_contiguous_periods: subjectForm.max_contiguous_periods || 1,
@@ -130,7 +134,7 @@ export default function ClassesTab({
       allowed_starts: subjectForm.allowed_starts || [],
       fixed_sessions: subjectForm.fixed_sessions || [],
       teacher_share_min_percent: subjectForm.teacher_share_min_percent || {},
-    } as Subject;
+    };
 
     const newSubjects = [...selectedSemesterData.subjects];
     if (editingSubjectIndex !== null && editingSubjectIndex >= 0) {
@@ -215,7 +219,19 @@ export default function ClassesTab({
         ) : (
           <>
             <div className="flex items-center justify-between border-b pb-2">
-              <h2 className="text-xl font-bold">{selectedClass.name}</h2>
+              <div className="flex items-center gap-4">
+                <h2 className="text-xl font-bold">{selectedClass.name}</h2>
+                <div className="flex items-center gap-2 border-l pl-4">
+                  <label className="text-sm font-medium text-gray-600">Sections:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-16 border p-1 rounded"
+                    value={selectedClass.num_sections || 1}
+                    onChange={e => updateClass({ num_sections: parseInt(e.target.value) || 1 })}
+                  />
+                </div>
+              </div>
               <div className="flex gap-4">
                 {SEMESTERS.map(sem => (
                   <label key={sem} className="flex items-center gap-2">
@@ -257,7 +273,8 @@ export default function ClassesTab({
                           <th className="p-2">Name</th>
                           <th className="p-2">Tag</th>
                           <th className="p-2">Teachers</th>
-                          <th className="p-2">Periods</th>
+                          <th className="p-2 text-center">Req</th>
+                          <th className="p-2 text-center">PPW</th>
                           <th className="p-2">Actions</th>
                         </tr>
                       </thead>
@@ -275,7 +292,8 @@ export default function ClassesTab({
                               )}
                             </td>
                             <td className="p-2">{subj.teachers.join(', ')}</td>
-                            <td className="p-2">{subj.periods_per_week}</td>
+                            <td className="p-2 text-center">{subj.teachers_required}</td>
+                            <td className="p-2 text-center">{subj.periods_per_week}</td>
                             <td className="p-2 flex gap-2">
                               <button onClick={() => editSubject(idx)} className="text-blue-600 hover:underline">Edit</button>
                               <button onClick={() => deleteSubject(idx)} className="text-red-600 hover:underline">Delete</button>
@@ -348,7 +366,7 @@ export default function ClassesTab({
                       <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple.</p>
                     </div>
 
-                    {subjectForm.teachers && subjectForm.teachers.length > 1 && subjectForm.teaching_mode === 'any_of' && (
+                    {subjectForm.teachers && subjectForm.teachers_required && subjectForm.teachers.length > subjectForm.teachers_required && (
                       <div className="md:col-span-2 space-y-2 p-3 bg-gray-100 rounded-lg border">
                         <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Teacher Share Minimum %</label>
                         <p className="text-xs text-gray-500 mb-2">Assign the minimum percentage of this subject's periods that each selected teacher must teach. The total does not need to sum to 100.</p>
@@ -401,15 +419,14 @@ export default function ClassesTab({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold uppercase text-gray-500">Teaching Mode</label>
-                      <select
+                      <label className="block text-xs font-bold uppercase text-gray-500">Teachers Required / Session</label>
+                      <input
+                        type="number"
+                        min="1"
                         className="w-full border p-2 rounded"
-                        value={subjectForm.teaching_mode || "any_of"}
-                        onChange={e => setSubjectForm(prev => ({ ...prev, teaching_mode: e.target.value as "any_of" | "all_of" }))}
-                      >
-                        <option value="any_of">any_of (OR)</option>
-                        <option value="all_of">all_of (AND)</option>
-                      </select>
+                        value={subjectForm.teachers_required || 1}
+                        onChange={e => setSubjectForm(prev => ({ ...prev, teachers_required: parseInt(e.target.value) || 1 }))}
+                      />
                     </div>
 
                     <div>

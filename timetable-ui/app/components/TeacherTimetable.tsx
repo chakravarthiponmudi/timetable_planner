@@ -29,7 +29,7 @@ const TeacherTimetable = ({ teacherTimetable, calendar }) => {
                   const cell = teacherTimetable.timetable[day][period];
                   let cellContent = '';
                   if (cell.type === 'class') {
-                    cellContent = `${cell.class}: ${cell.subject}`;
+                    cellContent = `${cell.class}: ${cell.subject}${cell.section !== undefined && cell.section !== null ? ` (S${cell.section})` : ''}`;
                   }
                   return (
                     <td key={period} className="border border-gray-300 p-2">

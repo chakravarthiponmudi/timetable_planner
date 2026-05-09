@@ -4,9 +4,8 @@ export type FixedSession = { day?: string; period: string; duration?: number };
 
 export type Subject = {
   name: string;
-  teacher?: string;
   teachers: string[];
-  teaching_mode: "any_of" | "all_of";
+  teachers_required: number;
   teacher_share_min_percent?: Record<string, number>;
   periods_per_week: number;
   min_contiguous_periods: number;
@@ -23,6 +22,7 @@ export type Semester = {
 
 export type ClassConfig = {
   name: string;
+  num_sections: number;
   semesters: Partial<Record<"S1" | "S2", Semester>>;
 };
 
@@ -55,6 +55,7 @@ export type TimetableInput = {
 export type TimetableCell = {
   subject: string | null;
   teacher: string | null;
+  teachers_by_section?: string[];
   type: 'free' | 'class' | 'blocked';
 };
 
@@ -66,6 +67,7 @@ export type ClassTimetable = {
 export type TeacherTimetableCell = {
   subject: string | null;
   class: string | null;
+  section?: number | null;
   type: 'free' | 'class';
 };
 

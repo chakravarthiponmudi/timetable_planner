@@ -86,12 +86,10 @@ class Subject(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    # Backward-compatible: old inputs used a single `teacher` string.
-    # New inputs may use `teachers` + `teaching_mode`.
-    teacher: Optional[str] = None
     teachers: List[str] = Field(default_factory=list)
-    teaching_mode: Literal["any_of", "all_of"] = "any_of"
-    # For teaching_mode=any_of only: minimum share (in percent) of this subject's periods that each teacher must get.
+    # Number of teachers required simultaneously per section.
+    teachers_required: int = Field(default=1, ge=1)
+    # minimum share (in percent) of this subject's periods that each teacher must get.
     # Example: {"T1": 70, "T2": 30} means T1 gets >= ceil(ppw*0.70), T2 gets >= ceil(ppw*0.30).
     teacher_share_min_percent: Dict[str, int] = Field(default_factory=dict)
     periods_per_week: int
@@ -107,16 +105,6 @@ class Subject(BaseModel):
         v = (v or "").strip()
         if not v:
             raise ValueError("must be a non-empty string")
-        return v
-
-    @field_validator("teacher")
-    @classmethod
-    def _teacher_non_empty_if_present(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return None
-        v = (v or "").strip()
-        if not v:
-            raise ValueError("must be a non-empty string if provided")
         return v
 
     @field_validator("teachers")
@@ -191,20 +179,18 @@ class Subject(BaseModel):
             raise ValueError("min_contiguous_periods cannot exceed max_contiguous_periods")
         if self.periods_per_week < self.min_contiguous_periods:
             raise ValueError("periods_per_week must be >= min_contiguous_periods")
-        # Normalize/validate teacher fields.
-        # Canonical: `teachers` + `teaching_mode`
-        # Backward-compatible input: allow `teacher` and normalize into `teachers`.
+
         if not self.teachers:
-            if self.teacher is None:
-                raise ValueError("must provide either 'teacher' or 'teachers'")
-            self.teachers = [self.teacher]
-            # Do NOT keep `teacher` going forward; omit it in output.
-            self.teacher = None
+            raise ValueError("must provide 'teachers'")
+
+        if self.teachers_required > len(self.teachers):
+            raise ValueError(
+                f"subject '{self.name}': teachers_required ({self.teachers_required}) "
+                f"exceeds number of available teachers ({len(self.teachers)})"
+            )
 
         # Validate teacher share constraints
         if self.teacher_share_min_percent:
-            if self.teaching_mode != "any_of":
-                raise ValueError("teacher_share_min_percent is only supported when teaching_mode='any_of'")
             # keys must be subset of teachers
             tset = set(self.teachers)
             for t in self.teacher_share_min_percent.keys():
@@ -213,13 +199,6 @@ class Subject(BaseModel):
             # Percent totals should not exceed 100 (avoid obvious over-constraints)
             if sum(self.teacher_share_min_percent.values()) > 100:
                 raise ValueError("sum of teacher_share_min_percent values cannot exceed 100")
-            # Integer-feasible: sum of rounded mins cannot exceed periods_per_week
-            mins = [round(self.periods_per_week * (pct / 100.0)) for pct in self.teacher_share_min_percent.values()]
-            if sum(mins) > self.periods_per_week:
-                raise ValueError(
-                    "teacher_share_min_percent is too strict for periods_per_week "
-                    f"(rounded-mins sum to {sum(mins)} but periods_per_week is {self.periods_per_week})"
-                )
         return self
 
 
@@ -244,7 +223,9 @@ class ClassConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
+    num_sections: int = Field(default=1, ge=1)
     semesters: Dict[SemesterKey, Semester]
+
 
     @field_validator("name")
     @classmethod
@@ -390,6 +371,18 @@ class TimetableInput(BaseModel):
         tnames = [t.name for t in (self.teachers or [])]
         if len(set(tnames)) != len(tnames):
             raise ValueError("teacher names must be unique (within teachers[])")
+
+        # Validate that each subject has enough teachers for the requested sections
+        for c in self.classes:
+            for sem_key, sem in c.semesters.items():
+                for subj in sem.subjects:
+                    total_needed = c.num_sections * subj.teachers_required
+                    if total_needed > len(subj.teachers):
+                        raise ValueError(
+                            f"class '{c.name}' {sem_key} subject '{subj.name}': "
+                            f"needs {total_needed} teachers ({c.num_sections} sections * {subj.teachers_required} req), "
+                            f"but only {len(subj.teachers)} teachers are listed: {subj.teachers}"
+                        )
         return self
 
     def validate_references(self) -> None:

@@ -22,7 +22,7 @@ class SubjectSpec:
     name: str
     teachers: Tuple[str, ...]
     periods_per_week: int
-    teaching_mode: str = "any_of"  # "any_of" or "all_of"
+    teachers_required: int = 1
     teacher_share_min_percent: Tuple[Tuple[str, int], ...] = ()
     min_contiguous_periods: int = 1
     max_contiguous_periods: int = 1
@@ -35,6 +35,7 @@ class SubjectSpec:
 class ClassSemesterSpec:
     class_name: str
     semester: str
+    num_sections: int
     subjects: Tuple[SubjectSpec, ...]
     blocked_periods: Tuple[Tuple[str, str, str], ...] = ()
 
@@ -48,10 +49,9 @@ def _compute_required_periods_by_teacher(specs: List[ClassSemesterSpec]) -> Dict
     for cs in specs:
         for subj in cs.subjects:
             # Only definite load can be computed pre-solve:
-            # - all_of: each listed teacher participates in every period
-            # - any_of: teacher assignment is a choice, so we cannot attribute periods to individual teachers here
-            mode = (subj.teaching_mode or "any_of").lower()
-            if mode == "all_of":
+            # If teachers_required * num_sections == len(teachers), then EVERY teacher in the pool
+            # must be teaching in every slot where this subject is scheduled.
+            if subj.teachers_required * cs.num_sections == len(subj.teachers):
                 for t in subj.teachers:
                     out[t] = out.get(t, 0) + subj.periods_per_week
     return out
@@ -200,10 +200,10 @@ def solve_timetable(
     occ_subj: Dict[Tuple[str, str, int, int], cp_model.IntVar] = {}
 
     subject_teachers: Dict[Tuple[str, str], Tuple[str, ...]] = {}
-    subject_teaching_mode: Dict[Tuple[str, str], str] = {}
+    subject_teachers_required: Dict[Tuple[str, str], int] = {}
 
-    # Teacher occupancy per (class, subject, teacher, day, period)
-    occ_subj_teacher: Dict[Tuple[str, str, str, int, int], cp_model.IntVar] = {}
+    # Teacher occupancy per (class, section_idx, subject, teacher, day, period)
+    occ_subj_teacher: Dict[Tuple[str, int, str, str, int, int], cp_model.IntVar] = {}
 
     # Create vars
     for cs in specs:
@@ -212,16 +212,17 @@ def solve_timetable(
                 occ[(cs.class_name, d, p)] = model.NewBoolVar(f"occ__{cs.class_name}__{d}__{p}")
         for subj in cs.subjects:
             subject_teachers[(cs.class_name, subj.name)] = tuple(subj.teachers)
-            subject_teaching_mode[(cs.class_name, subj.name)] = (subj.teaching_mode or "any_of").lower()
+            subject_teachers_required[(cs.class_name, subj.name)] = subj.teachers_required
             for d in range(num_days):
                 for p in range(num_periods):
                     occ_subj[(cs.class_name, subj.name, d, p)] = model.NewBoolVar(
                         f"occsubj__{cs.class_name}__{subj.name}__{d}__{p}"
                     )
-                    for t in subj.teachers:
-                        occ_subj_teacher[(cs.class_name, subj.name, t, d, p)] = model.NewBoolVar(
-                            f"occsubjteach__{cs.class_name}__{subj.name}__{t}__{d}__{p}"
-                        )
+                    for section_idx in range(cs.num_sections):
+                        for t in subj.teachers:
+                            occ_subj_teacher[(cs.class_name, section_idx, subj.name, t, d, p)] = model.NewBoolVar(
+                                f"occsubjteach__{cs.class_name}__{section_idx}__{subj.name}__{t}__{d}__{p}"
+                            )
             for d in range(num_days):
                 for start in range(num_periods):
                     for dur in range(subj.min_contiguous_periods, subj.max_contiguous_periods + 1):
@@ -460,49 +461,52 @@ def solve_timetable(
     # Link teacher occupancy vars to subject occupancy vars
     for cs in specs:
         for subj in cs.subjects:
-            mode = (subj.teaching_mode or "any_of").lower()
             for d in range(num_days):
                 for p in range(num_periods):
-                    tvars = [occ_subj_teacher[(cs.class_name, subj.name, t, d, p)] for t in subj.teachers]
-                    if mode == "all_of":
-                        for tv in tvars:
-                            model.Add(tv == occ_subj[(cs.class_name, subj.name, d, p)])
-                    else:
-                        # any_of: exactly one teacher if the subject occupies this slot; none if not occupied
-                        model.Add(sum(tvars) == occ_subj[(cs.class_name, subj.name, d, p)])
+                    # Each section must have exactly teachers_required assigned if the subject is scheduled.
+                    for section_idx in range(cs.num_sections):
+                        section_tvars = [
+                            occ_subj_teacher[(cs.class_name, section_idx, subj.name, t, d, p)]
+                            for t in subj.teachers
+                        ]
+                        model.Add(
+                            sum(section_tvars)
+                            == subj.teachers_required * occ_subj[(cs.class_name, subj.name, d, p)]
+                        )
 
-    # Constraint: teacher share minimum percentage (for any_of subjects only)
+    # Constraint: teacher share minimum percentage
     for cs in specs:
         for subj in cs.subjects:
-            mode = (subj.teaching_mode or "any_of").lower()
-            if mode != "any_of" or not subj.teacher_share_min_percent:
+            if not subj.teacher_share_min_percent:
                 continue
-            # For each teacher with a min_percent requirement, ensure they get at least that percentage of periods.
-            total_periods = subj.periods_per_week
+            # For each teacher with a min_percent requirement, ensure they get at least that percentage of total workload.
+            # Total workload = ppw * num_sections * teachers_required
+            total_workload = subj.periods_per_week * cs.num_sections * subj.teachers_required
             for teacher, min_percent in subj.teacher_share_min_percent:
                 if teacher not in subj.teachers:
                     raise ValueError(
                         f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
                         f"teacher_share_min_percent includes '{teacher}' but that teacher is not in teachers list"
                     )
-                # min_periods = round(total_periods * min_percent / 100)
-                min_periods = round(total_periods * min_percent / 100.0)
+                min_periods = round(total_workload * min_percent / 100.0)
                 teacher_total = sum(
-                    occ_subj_teacher[(cs.class_name, subj.name, teacher, d, p)]
+                    occ_subj_teacher[(cs.class_name, section_idx, subj.name, teacher, d, p)]
+                    for section_idx in range(cs.num_sections)
                     for d in range(num_days)
                     for p in range(num_periods)
                 )
                 model.Add(teacher_total >= min_periods)
 
-    # Constraint: a teacher cannot teach two classes at the same time
+    # Constraint: a teacher cannot teach two classes (or two sections) at the same time
     teachers = sorted({t for cs in specs for subj in cs.subjects for t in subj.teachers})
     for t in teachers:
         for d in range(num_days):
             for p in range(num_periods):
                 model.Add(
                     sum(
-                        occ_subj_teacher[(cs.class_name, subj.name, t, d, p)]
+                        occ_subj_teacher[(cs.class_name, section_idx, subj.name, t, d, p)]
                         for cs in specs
+                        for section_idx in range(cs.num_sections)
                         for subj in cs.subjects
                         if t in subj.teachers
                     )
@@ -516,8 +520,9 @@ def solve_timetable(
             if tmax is not None:
                 model.Add(
                     sum(
-                        occ_subj_teacher[(cs.class_name, subj.name, t, d, p)]
+                        occ_subj_teacher[(cs.class_name, section_idx, subj.name, t, d, p)]
                         for cs in specs
+                        for section_idx in range(cs.num_sections)
                         for subj in cs.subjects
                         for d in range(num_days)
                         for p in range(num_periods)
@@ -532,13 +537,16 @@ def solve_timetable(
                     if day_name not in day_to_idx:
                         raise ValueError(f"teacher '{t}': unavailable_periods day '{day_name}' is not in calendar.days")
                     if period_name not in period_to_idx:
-                        raise ValueError(f"teacher '{t}': unavailable_periods period '{period_name}' is not in calendar.periods")
+                        raise ValueError(
+                            f"teacher '{t}': unavailable_periods period '{period_name}' is not in calendar.periods"
+                        )
                     d = day_to_idx[day_name]
                     p = period_to_idx[period_name]
                     model.Add(
                         sum(
-                            occ_subj_teacher[(cs.class_name, subj.name, t, d, p)]
+                            occ_subj_teacher[(cs.class_name, section_idx, subj.name, t, d, p)]
                             for cs in specs
+                            for section_idx in range(cs.num_sections)
                             for subj in cs.subjects
                             if t in subj.teachers
                         )
@@ -588,8 +596,9 @@ def solve_timetable(
                     model.Add(
                         teacher_occ
                         == sum(
-                            occ_subj_teacher[(cs.class_name, subj.name, t, d, p)]
+                            occ_subj_teacher[(cs.class_name, section_idx, subj.name, t, d, p)]
                             for cs in specs
+                            for section_idx in range(cs.num_sections)
                             for subj in cs.subjects
                             if t in subj.teachers
                         )
@@ -599,7 +608,9 @@ def solve_timetable(
     # Weighted objective: prioritize subject daily start minimization, then teacher preferences.
     w_subject_daily = 10
     w_teacher_pref = 1
-    model.Minimize(w_subject_daily * sum(penalties_subject_daily_starts) + w_teacher_pref * sum(penalties_teacher_preference))
+    model.Minimize(
+        w_subject_daily * sum(penalties_subject_daily_starts) + w_teacher_pref * sum(penalties_teacher_preference)
+    )
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = float(time_limit_s)
@@ -619,9 +630,10 @@ def solve_timetable(
         "occ_subj": occ_subj,
         "occ_subj_teacher": occ_subj_teacher,
         "subject_teachers": subject_teachers,
-        "subject_teaching_mode": subject_teaching_mode,
+        "subject_teachers_required": subject_teachers_required,
         "meta": meta,
     }
+
 
 
 def diagnose_infeasible(
@@ -780,14 +792,10 @@ def _format_class_timetable(
     periods: List[str],
     solver: cp_model.CpSolver,
     occ_subj: Dict[Tuple[str, str, int, int], cp_model.IntVar],
-    occ_subj_teacher: Dict[Tuple[str, str, str, int, int], cp_model.IntVar],
+    occ_subj_teacher: Dict[Tuple[str, int, str, str, int, int], cp_model.IntVar],
     subject_teachers: Dict[Tuple[str, str], Tuple[str, ...]],
-    subject_teaching_mode: Dict[Tuple[str, str], str],
 ) -> str:
     num_periods = len(periods)
-
-    def slot_index(d: int, p: int) -> int:
-        return d * num_periods + p
 
     class_name = spec.class_name
     subjects = [s.name for s in spec.subjects]
@@ -800,19 +808,25 @@ def _format_class_timetable(
         for p in range(len(periods)):
             cell = "-"
             # Check occupancy
-            for subj in subjects:
-                if solver.Value(occ_subj[(class_name, subj, d, p)]) == 1:
-                    mode = (subject_teaching_mode.get((class_name, subj)) or "any_of").lower()
-                    tlist = list(subject_teachers.get((class_name, subj)) or ())
-                    if mode == "all_of":
-                        cell = f"{subj}({'+'.join(tlist)})" if tlist else f"{subj}(?)"
+            for subj_name in subjects:
+                if solver.Value(occ_subj[(class_name, subj_name, d, p)]) == 1:
+                    sections_teachers = []
+                    tlist = list(subject_teachers.get((class_name, subj_name)) or ())
+                    for section_idx in range(spec.num_sections):
+                        chosen_for_section = [
+                            t
+                            for t in tlist
+                            if solver.Value(occ_subj_teacher[(class_name, section_idx, subj_name, t, d, p)]) == 1
+                        ]
+                        if not chosen_for_section:
+                            sections_teachers.append("?")
+                        else:
+                            sections_teachers.append("+".join(chosen_for_section))
+
+                    if spec.num_sections > 1:
+                        cell = f"{subj_name}[" + "|".join(sections_teachers) + "]"
                     else:
-                        chosen = "?"
-                        for t in tlist:
-                            if solver.Value(occ_subj_teacher[(class_name, subj, t, d, p)]) == 1:
-                                chosen = t
-                                break
-                        cell = f"{subj}({chosen})"
+                        cell = f"{subj_name}({sections_teachers[0]})"
                     break
             # If empty, check if blocked
             if cell == "-":
@@ -823,7 +837,9 @@ def _format_class_timetable(
         grid.append(row)
 
     # Pretty print as aligned columns
-    col_widths = [max(len(periods[i]), max(len(grid[r][i]) for r in range(len(days)))) for i in range(len(periods))]
+    col_widths = [
+        max(len(periods[i]), max(len(grid[r][i]) for r in range(len(days)))) for i in range(len(periods))
+    ]
     day_width = max(len("Day"), max(len(d) for d in days))
 
     lines: List[str] = []
@@ -831,7 +847,9 @@ def _format_class_timetable(
     header = " " * (day_width + 2) + "  ".join(periods[i].ljust(col_widths[i]) for i in range(len(periods)))
     lines.append(header)
     for d, day in enumerate(days):
-        lines.append(day.ljust(day_width) + "  " + "  ".join(grid[d][i].ljust(col_widths[i]) for i in range(len(periods))))
+        lines.append(
+            day.ljust(day_width) + "  " + "  ".join(grid[d][i].ljust(col_widths[i]) for i in range(len(periods)))
+        )
     return "\n".join(lines)
 
 
@@ -843,12 +861,9 @@ def _format_teacher_timetable(
     periods: List[str],
     solver: cp_model.CpSolver,
     occ_subj: Dict[Tuple[str, str, int, int], cp_model.IntVar],
-    occ_subj_teacher: Dict[Tuple[str, str, str, int, int], cp_model.IntVar],
+    occ_subj_teacher: Dict[Tuple[str, int, str, str, int, int], cp_model.IntVar],
 ) -> str:
     num_periods = len(periods)
-
-    def slot_index(d: int, p: int) -> int:
-        return d * num_periods + p
 
     class_subjects: Dict[str, List[str]] = {cs.class_name: [s.name for s in cs.subjects] for cs in specs}
 
@@ -859,18 +874,28 @@ def _format_teacher_timetable(
             cell = "-"
             for cs in specs:
                 for subj in class_subjects[cs.class_name]:
-                    key = (cs.class_name, subj, teacher, d, p)
-                    if key not in occ_subj_teacher:
-                        continue
-                    if solver.Value(occ_subj_teacher[key]) == 1:
-                        cell = f"{cs.class_name}:{subj}"
+                    found = False
+                    for section_idx in range(cs.num_sections):
+                        key = (cs.class_name, section_idx, subj, teacher, d, p)
+                        if key not in occ_subj_teacher:
+                            continue
+                        if solver.Value(occ_subj_teacher[key]) == 1:
+                            if cs.num_sections > 1:
+                                cell = f"{cs.class_name}:{subj}(S{section_idx})"
+                            else:
+                                cell = f"{cs.class_name}:{subj}"
+                            found = True
+                            break
+                    if found:
                         break
                 if cell != "-":
                     break
             row.append(cell)
         grid.append(row)
 
-    col_widths = [max(len(periods[i]), max(len(grid[r][i]) for r in range(len(days)))) for i in range(len(periods))]
+    col_widths = [
+        max(len(periods[i]), max(len(grid[r][i]) for r in range(len(days)))) for i in range(len(periods))
+    ]
     day_width = max(len("Day"), max(len(d) for d in days))
 
     lines: List[str] = []
@@ -878,7 +903,9 @@ def _format_teacher_timetable(
     header = " " * (day_width + 2) + "  ".join(periods[i].ljust(col_widths[i]) for i in range(len(periods)))
     lines.append(header)
     for d, day in enumerate(days):
-        lines.append(day.ljust(day_width) + "  " + "  ".join(grid[d][i].ljust(col_widths[i]) for i in range(len(periods))))
+        lines.append(
+            day.ljust(day_width) + "  " + "  ".join(grid[d][i].ljust(col_widths[i]) for i in range(len(periods)))
+        )
     return "\n".join(lines)
 
 
@@ -889,9 +916,8 @@ def _format_class_timetable_html(
     periods: List[str],
     solver: cp_model.CpSolver,
     occ_subj: Dict[Tuple[str, str, int, int], cp_model.IntVar],
-    occ_subj_teacher: Dict[Tuple[str, str, str, int, int], cp_model.IntVar],
+    occ_subj_teacher: Dict[Tuple[str, int, str, str, int, int], cp_model.IntVar],
     subject_teachers: Dict[Tuple[str, str], Tuple[str, ...]],
-    subject_teaching_mode: Dict[Tuple[str, str], str],
 ) -> str:
     class_name = spec.class_name
     subjects = [s.name for s in spec.subjects]
@@ -903,19 +929,26 @@ def _format_class_timetable_html(
         row: List[str] = []
         for p in range(len(periods)):
             cell = "-"
-            for subj in subjects:
-                if solver.Value(occ_subj[(class_name, subj, d, p)]) == 1:
-                    mode = (subject_teaching_mode.get((class_name, subj)) or "any_of").lower()
-                    tlist = list(subject_teachers.get((class_name, subj)) or ())
-                    if mode == "all_of":
-                        cell = f"{subj} ({' + '.join(tlist)})" if tlist else f"{subj} (?)"
+            for subj_name in subjects:
+                if solver.Value(occ_subj[(class_name, subj_name, d, p)]) == 1:
+                    sections_teachers = []
+                    tlist = list(subject_teachers.get((class_name, subj_name)) or ())
+                    for section_idx in range(spec.num_sections):
+                        chosen_for_section = [
+                            t
+                            for t in tlist
+                            if solver.Value(occ_subj_teacher[(class_name, section_idx, subj_name, t, d, p)]) == 1
+                        ]
+                        if not chosen_for_section:
+                            sections_teachers.append("?")
+                        else:
+                            sections_teachers.append("+".join(chosen_for_section))
+
+                    if spec.num_sections > 1:
+                        st_parts = [f"Sec {i}: {t}" for i, t in enumerate(sections_teachers)]
+                        cell = f"{subj_name}<br/><small>" + " | ".join(st_parts) + "</small>"
                     else:
-                        chosen = "?"
-                        for t in tlist:
-                            if solver.Value(occ_subj_teacher[(class_name, subj, t, d, p)]) == 1:
-                                chosen = t
-                                break
-                        cell = f"{subj} ({chosen})"
+                        cell = f"{subj_name} ({sections_teachers[0]})"
                     break
             # If empty, check if blocked
             if cell == "-":
@@ -937,7 +970,7 @@ def _format_class_timetable_html(
         out.append("<tr>")
         out.append(f"<th>{html.escape(day)}</th>")
         for p in range(len(periods)):
-            out.append(f"<td>{html.escape(rows[d][p])}</td>")
+            out.append(f"<td>{rows[d][p]}</td>")  # Note: not escaping cell because it has <br/> and <small>
         out.append("</tr>")
     out.append("</tbody></table>")
     return "\n".join(out)
@@ -950,9 +983,8 @@ def _format_class_timetable_json(
     periods: List[str],
     solver: cp_model.CpSolver,
     occ_subj: Dict[Tuple[str, str, int, int], cp_model.IntVar],
-    occ_subj_teacher: Dict[Tuple[str, str, str, int, int], cp_model.IntVar],
+    occ_subj_teacher: Dict[Tuple[str, int, str, str, int, int], cp_model.IntVar],
     subject_teachers: Dict[Tuple[str, str], Tuple[str, ...]],
-    subject_teaching_mode: Dict[Tuple[str, str], str],
 ) -> Dict:
     class_name = spec.class_name
     subjects = [s.name for s in spec.subjects]
@@ -962,28 +994,30 @@ def _format_class_timetable_json(
     for d_idx, d in enumerate(days):
         grid[d] = {}
         for p_idx, p in enumerate(periods):
-            cell_info = {"subject": None, "teacher": None, "type": "free"}
-            
+            cell_info = {"subject": None, "teachers_by_section": [], "type": "free"}
+
             # Check occupancy
-            for subj in subjects:
-                if solver.Value(occ_subj[(class_name, subj, d_idx, p_idx)]) == 1:
-                    mode = (subject_teaching_mode.get((class_name, subj)) or "any_of").lower()
-                    tlist = list(subject_teachers.get((class_name, subj)) or ())
-                    
-                    cell_info["subject"] = subj
+            for subj_name in subjects:
+                if solver.Value(occ_subj[(class_name, subj_name, d_idx, p_idx)]) == 1:
+                    cell_info["subject"] = subj_name
                     cell_info["type"] = "class"
-                    
-                    if mode == "all_of":
-                        cell_info["teacher"] = "+".join(tlist) if tlist else "?"
-                    else:
-                        chosen = "?"
-                        for t in tlist:
-                            if solver.Value(occ_subj_teacher[(class_name, subj, t, d_idx, p_idx)]) == 1:
-                                chosen = t
-                                break
-                        cell_info["teacher"] = chosen
+
+                    tlist = list(subject_teachers.get((class_name, subj_name)) or ())
+                    for section_idx in range(spec.num_sections):
+                        chosen_for_section = [
+                            t
+                            for t in tlist
+                            if solver.Value(occ_subj_teacher[(class_name, section_idx, subj_name, t, d_idx, p_idx)])
+                            == 1
+                        ]
+                        cell_info["teachers_by_section"].append(
+                            "+".join(chosen_for_section) if chosen_for_section else "?"
+                        )
+
+                    if spec.num_sections == 1:
+                        cell_info["teacher"] = cell_info["teachers_by_section"][0]
                     break
-            
+
             # If empty, check if blocked
             if cell_info["type"] == "free":
                 if (d, p) in blocked_map:
@@ -995,6 +1029,7 @@ def _format_class_timetable_json(
 
     return {
         "class_name": class_name,
+        "num_sections": spec.num_sections,
         "timetable": grid,
     }
 
@@ -1007,7 +1042,7 @@ def _format_teacher_timetable_html(
     periods: List[str],
     solver: cp_model.CpSolver,
     occ_subj: Dict[Tuple[str, str, int, int], cp_model.IntVar],
-    occ_subj_teacher: Dict[Tuple[str, str, str, int, int], cp_model.IntVar],
+    occ_subj_teacher: Dict[Tuple[str, int, str, str, int, int], cp_model.IntVar],
 ) -> str:
     class_subjects: Dict[str, List[str]] = {cs.class_name: [s.name for s in cs.subjects] for cs in specs}
 
@@ -1018,11 +1053,19 @@ def _format_teacher_timetable_html(
             cell = "-"
             for cs in specs:
                 for subj in class_subjects[cs.class_name]:
-                    key = (cs.class_name, subj, teacher, d, p)
-                    if key not in occ_subj_teacher:
-                        continue
-                    if solver.Value(occ_subj_teacher[key]) == 1:
-                        cell = f"{cs.class_name}: {subj}"
+                    found = False
+                    for section_idx in range(cs.num_sections):
+                        key = (cs.class_name, section_idx, subj, teacher, d, p)
+                        if key not in occ_subj_teacher:
+                            continue
+                        if solver.Value(occ_subj_teacher[key]) == 1:
+                            if cs.num_sections > 1:
+                                cell = f"{cs.class_name}: {subj} (Sec {section_idx})"
+                            else:
+                                cell = f"{cs.class_name}: {subj}"
+                            found = True
+                            break
+                    if found:
                         break
                 if cell != "-":
                     break
@@ -1054,7 +1097,7 @@ def _format_teacher_timetable_json(
     days: List[str],
     periods: List[str],
     solver: cp_model.CpSolver,
-    occ_subj_teacher: Dict[Tuple[str, str, str, int, int], cp_model.IntVar],
+    occ_subj_teacher: Dict[Tuple[str, int, str, str, int, int], cp_model.IntVar],
     total_periods: int,
 ) -> Dict:
     class_subjects: Dict[str, List[str]] = {cs.class_name: [s.name for s in cs.subjects] for cs in specs}
@@ -1063,21 +1106,27 @@ def _format_teacher_timetable_json(
     for d_idx, d in enumerate(days):
         grid[d] = {}
         for p_idx, p in enumerate(periods):
-            cell_info = {"subject": None, "class": None, "type": "free"}
-            
+            cell_info = {"subject": None, "class": None, "section": None, "type": "free"}
+
             for cs in specs:
                 for subj in class_subjects[cs.class_name]:
-                    key = (cs.class_name, subj, teacher, d_idx, p_idx)
-                    if key not in occ_subj_teacher:
-                        continue
-                    if solver.Value(occ_subj_teacher[key]) == 1:
-                        cell_info["subject"] = subj
-                        cell_info["class"] = cs.class_name
-                        cell_info["type"] = "class"
+                    found = False
+                    for section_idx in range(cs.num_sections):
+                        key = (cs.class_name, section_idx, subj, teacher, d_idx, p_idx)
+                        if key not in occ_subj_teacher:
+                            continue
+                        if solver.Value(occ_subj_teacher[key]) == 1:
+                            cell_info["subject"] = subj
+                            cell_info["class"] = cs.class_name
+                            cell_info["section"] = section_idx
+                            cell_info["type"] = "class"
+                            found = True
+                            break
+                    if found:
                         break
                 if cell_info["type"] != "free":
                     break
-            
+
             grid[d][p] = cell_info
 
     return {
@@ -1103,7 +1152,7 @@ def _wrap_html_document(body: str) -> str:
 def _compute_teacher_allocation_periods(
     *,
     solver: cp_model.CpSolver,
-    occ_subj_teacher: Dict[Tuple[str, str, str, int, int], cp_model.IntVar],
+    occ_subj_teacher: Dict[Tuple[str, int, str, str, int, int], cp_model.IntVar],
 ) -> Tuple[Dict[str, Dict[Tuple[str, str], int]], Dict[str, int]]:
     """
     Returns:
@@ -1112,7 +1161,7 @@ def _compute_teacher_allocation_periods(
     """
     per_teacher: Dict[str, Dict[Tuple[str, str], int]] = {}
     totals: Dict[str, int] = {}
-    for (cls, subj, teacher, d, p), var in occ_subj_teacher.items():
+    for (cls, sec, subj, teacher, d, p), var in occ_subj_teacher.items():
         if solver.Value(var) != 1:
             continue
         per_teacher.setdefault(teacher, {})
@@ -1260,7 +1309,7 @@ def main() -> None:
             SubjectSpec(
                 name=s.name,
                 teachers=tuple(s.teachers or ([s.teacher] if s.teacher else [])),
-                teaching_mode=str(getattr(s, "teaching_mode", "any_of") or "any_of"),
+                teachers_required=s.teachers_required or 1,
                 teacher_share_min_percent=tuple(
                     (tname, int(pct))
                     for tname, pct in (getattr(s, "teacher_share_min_percent", {}) or {}).items()
@@ -1285,6 +1334,7 @@ def main() -> None:
             ClassSemesterSpec(
                 class_name=c.name,
                 semester=args.semester,
+                num_sections=c.num_sections,
                 subjects=subjects,
                 blocked_periods=tuple((bp.day, bp.period, bp.reason or "") for bp in sem.blocked_periods),
             )
@@ -1370,7 +1420,6 @@ def main() -> None:
                     occ_subj=ctx["occ_subj"],
                     occ_subj_teacher=ctx["occ_subj_teacher"],
                     subject_teachers=ctx["subject_teachers"],
-                    subject_teaching_mode=ctx["subject_teaching_mode"],
                 )
             )
         if args.print_teachers:
@@ -1396,16 +1445,17 @@ def main() -> None:
         return
     else:
         for cs in specs:
-            print(_format_class_timetable(
-                spec=cs,
-                days=days,
-                periods=periods,
-                solver=solver,
-                occ_subj=ctx["occ_subj"],
-                occ_subj_teacher=ctx["occ_subj_teacher"],
-                subject_teachers=ctx["subject_teachers"],
-                subject_teaching_mode=ctx["subject_teaching_mode"],
-            ))
+            print(
+                _format_class_timetable(
+                    spec=cs,
+                    days=days,
+                    periods=periods,
+                    solver=solver,
+                    occ_subj=ctx["occ_subj"],
+                    occ_subj_teacher=ctx["occ_subj_teacher"],
+                    subject_teachers=ctx["subject_teachers"],
+                )
+            )
             print()
 
     if args.print_teachers:

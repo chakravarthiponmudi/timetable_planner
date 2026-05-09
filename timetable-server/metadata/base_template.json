@@ -30,13 +30,14 @@
   "classes": [
     {
       "name": "BSc_I",
+      "num_sections": 2,
       "semesters": {
         "S1": {
           "subjects": [
             {
               "name": "subject_I",
               "teachers": ["Teacher_A", "Teacher_B"],
-              "teaching_mode": "any_of",
+              "teachers_required": 1,
               "teacher_share_min_percent": {
                 "Teacher_A": 50,
                 "Teacher_B": 30
@@ -45,16 +46,15 @@
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
               "tags": [],
-              "allowed_starts": [
-              ],
+              "allowed_starts": [],
               "fixed_sessions": [
                 { "period": "P2", "duration": 1 }
               ]
             },
             {
               "name": "subject_II",
-              "teachers": ["Teacher_A"],
-              "teaching_mode": "all_of",
+              "teachers": ["Teacher_A", "Teacher_B"],
+              "teachers_required": 1,
               "periods_per_week": 2,
               "min_contiguous_periods": 2,
               "max_contiguous_periods": 2,
@@ -71,8 +71,8 @@
           "subjects": [
             {
               "name": "English_II",
-              "teachers": ["Teacher_A"],
-              "teaching_mode": "any_of",
+              "teachers": ["Teacher_A", "Teacher_B"],
+              "teachers_required": 1,
               "periods_per_week": 2,
               "min_contiguous_periods": 1,
               "max_contiguous_periods": 1,
@@ -89,5 +89,3 @@
     }
   ]
 }
-
-

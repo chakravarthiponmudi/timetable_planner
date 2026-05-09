@@ -12,7 +12,8 @@ export default function TimetableEditor() {
 
   const [data, setRawData] = useState<TimetableInput | null>(null);
   const [activeTab, setActiveTab] = useState("calendar");
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [opError, setOpError] = useState<string | null>(null);
 
   // === State lifted from child tabs to preserve UI state across tab switches ===
 
@@ -56,11 +57,6 @@ export default function TimetableEditor() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-        if (!apiUrl) {
-          setError("API URL is not configured. Please set NEXT_PUBLIC_API_URL environment variable.");
-          return;
-        }
         const response = await fetch(`/app_initial_data`);
         if (!response.ok) {
           throw new Error(`Failed to fetch data: ${response.statusText}`);
@@ -68,7 +64,7 @@ export default function TimetableEditor() {
         const jsonData = await response.json();
         setData(jsonData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "An unknown error occurred");
+        setLoadError(err instanceof Error ? err.message : "An unknown error occurred");
       }
     };
     fetchData();
@@ -78,6 +74,7 @@ export default function TimetableEditor() {
     if (!data) return;
     setIsSolving(true);
     setSolverResult(null);
+    setOpError(null);
     try {
       const response = await fetch(`/solve/${runSemester}`, {
         method: 'POST',
@@ -89,11 +86,27 @@ export default function TimetableEditor() {
 
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.detail?.message || `HTTP error! status: ${response.status}`);
+        let msg = `HTTP error! status: ${response.status}`;
+        if (response.status === 422) {
+          const details = result.detail;
+          if (Array.isArray(details)) {
+            msg = "Validation Errors:\n" + details.map((d: any) => `- ${d.msg} (at ${d.loc.join('.')})`).join('\n');
+          } else {
+            msg = "Validation Error: " + (typeof details === 'string' ? details : JSON.stringify(details));
+          }
+        } else if (result.detail?.message) {
+          msg = result.detail.message;
+          if (result.detail.diagnostics) {
+            msg += ":\n" + result.detail.diagnostics.join('\n');
+          }
+        } else if (typeof result.detail === 'string') {
+          msg = result.detail;
+        }
+        throw new Error(msg);
       }
       setSolverResult(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unknown error occurred");
+      setOpError(err instanceof Error ? err.message : "An unknown error occurred");
       setSolverResult(null);
     } finally {
       setIsSolving(false);
@@ -111,7 +124,7 @@ export default function TimetableEditor() {
         // Reset selections that might be invalid in the new data
         setSelectedClassName("");
         setSelectedTeacherName("");
-        setError(null);
+        setOpError(null);
       } catch (err) {
         alert(`Invalid JSON file: ${err}`);
       }
@@ -130,12 +143,12 @@ export default function TimetableEditor() {
     URL.revokeObjectURL(url);
   };
 
-  if (error) {
+  if (loadError) {
     return (
       <div className="min-h-screen bg-red-50 p-8 flex items-center justify-center">
         <div className="bg-white p-6 rounded shadow-md text-red-700">
           <h2 className="text-xl font-bold mb-4">Error</h2>
-          <p>{error}</p>
+          <p>{loadError}</p>
         </div>
       </div>
     );
@@ -290,6 +303,13 @@ export default function TimetableEditor() {
               <div className="border-t pt-4">
                 {isSolving && <div className="text-center text-gray-500">Processing... please wait.</div>}
               
+                {opError && (
+                  <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded whitespace-pre-wrap mb-4">
+                    <h3 className="font-bold mb-2 text-lg">Solving Failed</h3>
+                    {opError}
+                  </div>
+                )}
+
                 {solverResult && (
                   <SolverResultComponent result={solverResult} calendar={data.calendar} />
                 )}

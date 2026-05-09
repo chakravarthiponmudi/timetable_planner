@@ -85,8 +85,8 @@ async def solve_timetable_endpoint(semester: str, request: TimetableInput):
         subjects = tuple(
             SubjectSpec(
                 name=s.name,
-                teachers=tuple(s.teachers or ([s.teacher] if s.teacher else [])),
-                teaching_mode=str(getattr(s, "teaching_mode", "any_of") or "any_of"),
+                teachers=tuple(s.teachers),
+                teachers_required=s.teachers_required,
                 teacher_share_min_percent=tuple(
                     (tname, int(pct))
                     for tname, pct in (getattr(s, "teacher_share_min_percent", {}) or {}).items()
@@ -111,6 +111,7 @@ async def solve_timetable_endpoint(semester: str, request: TimetableInput):
             ClassSemesterSpec(
                 class_name=c.name,
                 semester=semester,
+                num_sections=c.num_sections,
                 subjects=subjects,
                 blocked_periods=tuple((bp.day, bp.period, bp.reason or "") for bp in sem.blocked_periods),
             )
@@ -147,29 +148,6 @@ async def solve_timetable_endpoint(semester: str, request: TimetableInput):
         )
         raise HTTPException(status_code=400, detail={"message": "Infeasible", "diagnostics": diagnostics})
 
-    # parts: List[str] = []
-    # for cs in specs:
-    #     parts.append(
-    #         _format_class_timetable_html(
-    #             spec=cs,
-    #             days=days,
-    #             periods=periods,
-    #             solver=solver,
-    #             occ_subj=ctx["occ_subj"],
-    #             occ_subj_teacher=ctx["occ_subj_teacher"],
-    #             subject_teachers=ctx["subject_teachers"],
-    #             subject_teaching_mode=ctx["subject_teaching_mode"],
-    #         )
-    #     )
-
-    # per_teacher, totals = _compute_teacher_allocation_periods(
-    #     solver=solver,
-    #     occ_subj_teacher=ctx["occ_subj_teacher"],
-    # )
-    # parts.append(_format_teacher_allocation_html(per_teacher=per_teacher, totals=totals))
-
-    # return {"status": ctx["meta"]["status"], "objective_value": ctx["meta"]["objective_value"], "html": _wrap_html_document("\n\n".join(parts))}
-
     timetables = [
         _format_class_timetable_json(
             spec=cs,
@@ -179,7 +157,6 @@ async def solve_timetable_endpoint(semester: str, request: TimetableInput):
             occ_subj=ctx["occ_subj"],
             occ_subj_teacher=ctx["occ_subj_teacher"],
             subject_teachers=ctx["subject_teachers"],
-            subject_teaching_mode=ctx["subject_teaching_mode"],
         )
         for cs in specs
     ]

@@ -45,7 +45,15 @@ const TimetableResult = ({ timetables, calendar }) => {
                               <div>
                                 <span className="font-semibold">{periodData.subject}</span>
                                 <br />
-                                <span className="text-xs text-gray-500">{periodData.teacher}</span>
+                                {periodData.teachers_by_section && periodData.teachers_by_section.length > 1 ? (
+                                  <div className="text-[10px] text-gray-500 leading-tight">
+                                    {periodData.teachers_by_section.map((t, idx) => (
+                                      <div key={idx}>S{idx}: {t}</div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-gray-500">{periodData.teacher}</span>
+                                )}
                               </div>
                             )
                           ) : null}

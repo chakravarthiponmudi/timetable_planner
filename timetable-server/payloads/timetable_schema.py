@@ -213,12 +213,12 @@ class Subject(BaseModel):
             # Percent totals should not exceed 100 (avoid obvious over-constraints)
             if sum(self.teacher_share_min_percent.values()) > 100:
                 raise ValueError("sum of teacher_share_min_percent values cannot exceed 100")
-            # Integer-feasible: sum of ceil mins cannot exceed periods_per_week
-            mins = [math.ceil(self.periods_per_week * (pct / 100.0)) for pct in self.teacher_share_min_percent.values()]
+            # Integer-feasible: sum of rounded mins cannot exceed periods_per_week
+            mins = [round(self.periods_per_week * (pct / 100.0)) for pct in self.teacher_share_min_percent.values()]
             if sum(mins) > self.periods_per_week:
                 raise ValueError(
                     "teacher_share_min_percent is too strict for periods_per_week "
-                    f"(ceil-mins sum to {sum(mins)} but periods_per_week is {self.periods_per_week})"
+                    f"(rounded-mins sum to {sum(mins)} but periods_per_week is {self.periods_per_week})"
                 )
         return self
 

@@ -485,8 +485,8 @@ def solve_timetable(
                         f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
                         f"teacher_share_min_percent includes '{teacher}' but that teacher is not in teachers list"
                     )
-                # min_periods = ceil(total_periods * min_percent / 100)
-                min_periods = math.ceil(total_periods * min_percent / 100.0)
+                # min_periods = round(total_periods * min_percent / 100)
+                min_periods = round(total_periods * min_percent / 100.0)
                 teacher_total = sum(
                     occ_subj_teacher[(cs.class_name, subj.name, teacher, d, p)]
                     for d in range(num_days)

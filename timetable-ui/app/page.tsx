@@ -10,196 +10,95 @@ import SolverResultComponent from './components/SolverResult';
 
 export default function TimetableEditor() {
 
-  const [data, setData] = useState<TimetableInput | null>(null);
-
+  const [data, setRawData] = useState<TimetableInput | null>(null);
   const [activeTab, setActiveTab] = useState("calendar");
-
   const [error, setError] = useState<string | null>(null);
-
-
 
   // === State lifted from child tabs to preserve UI state across tab switches ===
 
+  // CalendarTab state
+  const [calendarDays, setCalendarDays] = useState<string | null>(null);
+  const [calendarPeriods, setCalendarPeriods] = useState<string | null>(null);
 
+  // Centralized data setter that keeps auxiliary UI state in sync
+  const setData = (newData: TimetableInput | null) => {
+    setRawData(newData);
+    if (newData) {
+      setCalendarDays(newData.calendar.days.join(', '));
+      setCalendarPeriods(newData.calendar.periods.join(', '));
+    }
+  };
 
   // ClassesTab state
-
   const [selectedClassName, setSelectedClassName] = useState("");
-
   const [selectedSem, setSelectedSem] = useState("S1");
-
   const [editingBlocked, setEditingBlocked] = useState<{ day: string; period: string }[]>([]);
-
   const [editingSubjectIndex, setEditingSubjectIndex] = useState<number | null>(null);
-
   const [subjectForm, setSubjectForm] = useState<Partial<Subject>>({});
-
   const [newClassName, setNewClassName] = useState("");
 
-
-
   // TeachersTab state
-
   const [selectedTeacherName, setSelectedTeacherName] = useState<string>("");
-
   const [newTeacherName, setNewTeacherName] = useState("");
 
-
-
   // ConstraintsTab state
-
   const [overrideClass, setOverrideClass] = useState("");
-
   const [overrideVal, setOverrideVal] = useState(0);
-
   const [tagName, setTagName] = useState("");
-
   const [tagLimit, setTagLimit] = useState(1);
-
   
-
-    // CalendarTab state
-
-  
-
-    const [calendarDays, setCalendarDays] = useState<string | null>(null);
-
-  
-
-    const [calendarPeriods, setCalendarPeriods] = useState<string | null>(null);
-
-  
-
-  
-
-  
-
-    // RunSolver state
-
-  
-
-    const [runSemester, setRunSemester] = useState<"S1" | "S2">("S1");
-
-  
-
-    const [runTimeLimit, setRunTimeLimit] = useState(10);
-
-  
-
-    const [solverResult, setSolverResult] = useState<SolverResult | null>(null);
-
-  
-
-    const [isSolving, setIsSolving] = useState(false);
-
-  
-
-  
-
-
+  // RunSolver state
+  const [runSemester, setRunSemester] = useState<"S1" | "S2">("S1");
+  const [runTimeLimit, setRunTimeLimit] = useState(10);
+  const [solverResult, setSolverResult] = useState<SolverResult | null>(null);
+  const [isSolving, setIsSolving] = useState(false);
 
   useEffect(() => {
-
     const fetchData = async () => {
-
       try {
-
         const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
         if (!apiUrl) {
-
           setError("API URL is not configured. Please set NEXT_PUBLIC_API_URL environment variable.");
-
           return;
-
         }
-
         const response = await fetch(`/app_initial_data`);
-
         if (!response.ok) {
-
           throw new Error(`Failed to fetch data: ${response.statusText}`);
-
         }
-
         const jsonData = await response.json();
-
         setData(jsonData);
-
-        // Initialize calendar form state after data is loaded
-
-        setCalendarDays(jsonData.calendar.days.join(', '));
-
-        setCalendarPeriods(jsonData.calendar.periods.join(', '));
-
       } catch (err) {
-
         setError(err instanceof Error ? err.message : "An unknown error occurred");
-
       }
+    };
+    fetchData();
+  }, []);
 
-        };
+  const handleRunSolver = async () => {
+    if (!data) return;
+    setIsSolving(true);
+    setSolverResult(null);
+    try {
+      const response = await fetch(`/solve/${runSemester}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
 
-        fetchData();
-
-      }, []);
-
-    
-
-      const handleRunSolver = async () => {
-
-        if (!data) return;
-
-        setIsSolving(true);
-
-        setSolverResult(null);
-
-        try {
-
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-          const response = await fetch(`/solve/${runSemester}`, {
-
-            method: 'POST',
-
-            headers: {
-
-              'Content-Type': 'application/json',
-
-            },
-
-            body: JSON.stringify(data),
-
-          });
-
-    
-
-          const result = await response.json();
-
-          if (!response.ok) {
-
-            throw new Error(result.detail?.message || `HTTP error! status: ${response.status}`);
-
-          }
-
-          setSolverResult(result);
-
-        } catch (err) {
-
-          setError(err instanceof Error ? err.message : "An unknown error occurred");
-          setSolverResult(null);
-
-        } finally {
-
-          setIsSolving(false);
-
-        }
-
-      };
-
-    
-
-
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.detail?.message || `HTTP error! status: ${response.status}`);
+      }
+      setSolverResult(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unknown error occurred");
+      setSolverResult(null);
+    } finally {
+      setIsSolving(false);
+    }
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -207,8 +106,11 @@ export default function TimetableEditor() {
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const json = JSON.parse(evt.target?.result as string);
+        const json = JSON.parse(evt.target?.result as string) as TimetableInput;
         setData(json);
+        // Reset selections that might be invalid in the new data
+        setSelectedClassName("");
+        setSelectedTeacherName("");
         setError(null);
       } catch (err) {
         alert(`Invalid JSON file: ${err}`);

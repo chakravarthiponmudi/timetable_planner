@@ -12,7 +12,6 @@ export default function TimetableEditor() {
 
   const [data, setRawData] = useState<TimetableInput | null>(null);
   const [activeTab, setActiveTab] = useState("calendar");
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [opError, setOpError] = useState<string | null>(null);
 
   // === State lifted from child tabs to preserve UI state across tab switches ===
@@ -55,6 +54,7 @@ export default function TimetableEditor() {
   const [isSolving, setIsSolving] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchData = async () => {
       try {
         const response = await fetch(`/app_initial_data`);
@@ -62,12 +62,18 @@ export default function TimetableEditor() {
           throw new Error(`Failed to fetch data: ${response.statusText}`);
         }
         const jsonData = await response.json();
-        setData(jsonData);
+        if (isMounted) {
+          setData(jsonData);
+        }
       } catch (err) {
-        setLoadError(err instanceof Error ? err.message : "An unknown error occurred");
+        if (isMounted) {
+          console.log("Backend not ready or error fetching initial data, retrying in 2 seconds...", err);
+          setTimeout(fetchData, 2000);
+        }
       }
     };
     fetchData();
+    return () => { isMounted = false; };
   }, []);
 
   const handleRunSolver = async () => {
@@ -143,21 +149,14 @@ export default function TimetableEditor() {
     URL.revokeObjectURL(url);
   };
 
-  if (loadError) {
-    return (
-      <div className="min-h-screen bg-red-50 p-8 flex items-center justify-center">
-        <div className="bg-white p-6 rounded shadow-md text-red-700">
-          <h2 className="text-xl font-bold mb-4">Error</h2>
-          <p>{loadError}</p>
-        </div>
-      </div>
-    );
-  }
-
   if (!data) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
-        <div className="text-lg font-medium text-gray-600">Loading data...</div>
+      <div className="min-h-screen bg-gray-50 p-8 flex flex-col items-center justify-center space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="text-lg font-medium text-gray-600 text-center">
+          Connecting to backend...<br/>
+          <span className="text-sm font-normal text-gray-400">The server might be starting up.</span>
+        </div>
       </div>
     );
   }

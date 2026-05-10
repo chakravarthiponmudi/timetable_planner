@@ -131,9 +131,10 @@ export default function ClassesTab({
       min_contiguous_periods: subjectForm.min_contiguous_periods || 1,
       max_contiguous_periods: subjectForm.max_contiguous_periods || 1,
       tags: subjectForm.tags || [],
+      preferred_days: subjectForm.preferred_days || [],
       allowed_starts: subjectForm.allowed_starts || [],
       fixed_sessions: subjectForm.fixed_sessions || [],
-      teacher_share_min_percent: subjectForm.teacher_share_min_percent || {},
+      teacher_min_periods: subjectForm.teacher_min_periods || {},
     };
 
     const newSubjects = [...selectedSemesterData.subjects];
@@ -272,6 +273,7 @@ export default function ClassesTab({
                         <tr>
                           <th className="p-2">Name</th>
                           <th className="p-2">Tag</th>
+                          <th className="p-2">Preferred Days</th>
                           <th className="p-2">Teachers</th>
                           <th className="p-2 text-center">Req</th>
                           <th className="p-2 text-center">PPW</th>
@@ -287,6 +289,19 @@ export default function ClassesTab({
                                 <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
                                   {subj.tags[0]}
                                 </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="p-2">
+                              {subj.preferred_days && subj.preferred_days.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {subj.preferred_days.map(d => (
+                                    <span key={d} className="px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px] font-bold">
+                                      {d}
+                                    </span>
+                                  ))}
+                                </div>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
@@ -338,6 +353,27 @@ export default function ClassesTab({
                       </select>
                     </div>
                     <div>
+                      <label className="block text-xs font-bold uppercase text-gray-500">Preferred Days</label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {data.calendar.days.map(day => (
+                          <label key={day} className="flex items-center gap-1 text-sm border p-1 rounded hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={subjectForm.preferred_days?.includes(day) || false}
+                              onChange={e => {
+                                const current = subjectForm.preferred_days || [];
+                                const next = e.target.checked 
+                                  ? [...current, day]
+                                  : current.filter(d => d !== day);
+                                setSubjectForm(prev => ({ ...prev, preferred_days: next }));
+                              }}
+                            />
+                            {day}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
                       <label className="block text-xs font-bold uppercase text-gray-500">Teachers</label>
                       <select
                         multiple
@@ -346,17 +382,17 @@ export default function ClassesTab({
                         onChange={e => {
                           const selected = Array.from(e.target.selectedOptions, option => option.value);
                           setSubjectForm(prevForm => {
-                            const newShares = { ...(prevForm.teacher_share_min_percent || {}) };
-                            // Remove shares for teachers that are no longer selected
-                            Object.keys(newShares).forEach(teacher => {
+                            const newMins = { ...(prevForm.teacher_min_periods || {}) };
+                            // Remove mins for teachers that are no longer selected
+                            Object.keys(newMins).forEach(teacher => {
                               if (!selected.includes(teacher)) {
-                                delete newShares[teacher];
+                                delete newMins[teacher];
                               }
                             });
                             return {
                               ...prevForm,
                               teachers: selected,
-                              teacher_share_min_percent: newShares
+                              teacher_min_periods: newMins
                             };
                           });
                         }}
@@ -368,39 +404,38 @@ export default function ClassesTab({
 
                     {subjectForm.teachers && subjectForm.teachers_required && subjectForm.teachers.length > subjectForm.teachers_required && (
                       <div className="md:col-span-2 space-y-2 p-3 bg-gray-100 rounded-lg border">
-                        <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Teacher Share Minimum %</label>
-                        <p className="text-xs text-gray-500 mb-2">Assign the minimum percentage of this subject's periods that each selected teacher must teach. The total does not need to sum to 100.</p>
+                        <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Teacher Minimum Periods</label>
+                        <p className="text-xs text-gray-500 mb-2">Assign the minimum number of periods that each selected teacher must teach for this section. Sum cannot exceed { (subjectForm.periods_per_week || 0) * (subjectForm.teachers_required || 0) }.</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2">
                           {subjectForm.teachers.map(teacher => (
                             <div key={teacher} className="flex items-center justify-between gap-2">
-                              <label className="text-sm" htmlFor={`teacher-share-${teacher}`}>{teacher}</label>
+                              <label className="text-sm" htmlFor={`teacher-min-${teacher}`}>{teacher}</label>
                               <div className="flex items-center gap-1">
                                 <input
-                                  id={`teacher-share-${teacher}`}
+                                  id={`teacher-min-${teacher}`}
                                   type="number"
                                   min="0"
-                                  max="100"
                                   className="w-20 border p-1 rounded"
-                                  placeholder="e.g. 50"
-                                  value={subjectForm.teacher_share_min_percent?.[teacher] || ""}
+                                  placeholder="e.g. 2"
+                                  value={subjectForm.teacher_min_periods?.[teacher] || ""}
                                   onChange={e => {
                                     const value = e.target.value;
-                                    const newShares = { ...(subjectForm.teacher_share_min_percent || {}) };
+                                    const newMins = { ...(subjectForm.teacher_min_periods || {}) };
                                     if (value === "" || value === null) {
-                                      delete newShares[teacher];
+                                      delete newMins[teacher];
                                     } else {
                                       const numValue = parseInt(value, 10);
-                                      if (numValue >= 0 && numValue <= 100) {
-                                        newShares[teacher] = numValue;
+                                      if (numValue >= 0) {
+                                        newMins[teacher] = numValue;
                                       }
                                     }
                                     setSubjectForm(prev => ({
                                       ...prev,
-                                      teacher_share_min_percent: newShares,
+                                      teacher_min_periods: newMins,
                                     }));
                                   }}
                                 />
-                                <span className="text-sm text-gray-500">%</span>
+                                <span className="text-sm text-gray-500">periods</span>
                               </div>
                             </div>
                           ))}

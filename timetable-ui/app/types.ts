@@ -6,11 +6,12 @@ export type Subject = {
   name: string;
   teachers: string[];
   teachers_required: number;
-  teacher_share_min_percent?: Record<string, number>;
+  teacher_min_periods?: Record<string, number>;
   periods_per_week: number;
   min_contiguous_periods: number;
   max_contiguous_periods: number;
   tags: string[];
+  preferred_days?: string[];
   allowed_starts: DayPeriod[];
   fixed_sessions: FixedSession[];
 };

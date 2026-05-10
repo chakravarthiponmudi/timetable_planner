@@ -23,10 +23,11 @@ class SubjectSpec:
     teachers: Tuple[str, ...]
     periods_per_week: int
     teachers_required: int = 1
-    teacher_share_min_percent: Tuple[Tuple[str, int], ...] = ()
+    teacher_min_periods: Tuple[Tuple[str, int], ...] = ()
     min_contiguous_periods: int = 1
     max_contiguous_periods: int = 1
     tags: Tuple[str, ...] = ()
+    preferred_days: Tuple[str, ...] = ()
     allowed_starts: Tuple[Tuple[str, str], ...] = ()
     fixed_sessions: Tuple[FixedSessionSpec, ...] = ()
 
@@ -175,6 +176,7 @@ def solve_timetable(
     enable_placement_constraints: bool = True,
     enable_tag_limits: bool = True,
     enable_min_classes_per_week: bool = True,
+    enable_subject_preferences: bool = True,
     enable_teacher_constraints: bool = True,
     enable_teacher_preferences: bool = True,
 ) -> Tuple[cp_model.CpSolver, int, dict]:
@@ -205,6 +207,10 @@ def solve_timetable(
     # Teacher occupancy per (class, section_idx, subject, teacher, day, period)
     occ_subj_teacher: Dict[Tuple[str, int, str, str, int, int], cp_model.IntVar] = {}
 
+    # Auxiliary: Is teacher T assigned to (Class, Subject, Section) at ALL?
+    # This is used to enforce that a teacher doesn't teach the same subject in different sections.
+    teacher_in_subj_section: Dict[Tuple[str, str, int, str], cp_model.IntVar] = {}
+
     # Create vars
     for cs in specs:
         for d in range(num_days):
@@ -213,6 +219,12 @@ def solve_timetable(
         for subj in cs.subjects:
             subject_teachers[(cs.class_name, subj.name)] = tuple(subj.teachers)
             subject_teachers_required[(cs.class_name, subj.name)] = subj.teachers_required
+            for section_idx in range(cs.num_sections):
+                for t in subj.teachers:
+                    teacher_in_subj_section[(cs.class_name, subj.name, section_idx, t)] = model.NewBoolVar(
+                        f"t_in_ss__{cs.class_name}__{subj.name}__{section_idx}__{t}"
+                    )
+
             for d in range(num_days):
                 for p in range(num_periods):
                     occ_subj[(cs.class_name, subj.name, d, p)] = model.NewBoolVar(
@@ -461,6 +473,13 @@ def solve_timetable(
     # Link teacher occupancy vars to subject occupancy vars
     for cs in specs:
         for subj in cs.subjects:
+            # Exclusivity: for a given (Class, Subject), a teacher can belong to at most one section's pool.
+            for t in subj.teachers:
+                model.Add(
+                    sum(teacher_in_subj_section[(cs.class_name, subj.name, s_idx, t)] for s_idx in range(cs.num_sections))
+                    <= 1
+                )
+
             for d in range(num_days):
                 for p in range(num_periods):
                     # Each section must have exactly teachers_required assigned if the subject is scheduled.
@@ -474,28 +493,46 @@ def solve_timetable(
                             == subj.teachers_required * occ_subj[(cs.class_name, subj.name, d, p)]
                         )
 
-    # Constraint: teacher share minimum percentage
+                        # Linkage: If a teacher teaches a section in ANY period, they are in that section's pool.
+                        for t in subj.teachers:
+                            model.Add(
+                                teacher_in_subj_section[(cs.class_name, subj.name, section_idx, t)]
+                                >= occ_subj_teacher[(cs.class_name, section_idx, subj.name, t, d, p)]
+                            )
+
+    # Constraint: teacher minimum periods per section
     for cs in specs:
         for subj in cs.subjects:
-            if not subj.teacher_share_min_percent:
+            if not subj.teacher_min_periods:
                 continue
-            # For each teacher with a min_percent requirement, ensure they get at least that percentage of total workload.
-            # Total workload = ppw * num_sections * teachers_required
-            total_workload = subj.periods_per_week * cs.num_sections * subj.teachers_required
-            for teacher, min_percent in subj.teacher_share_min_percent:
+            for teacher, min_periods in subj.teacher_min_periods:
                 if teacher not in subj.teachers:
                     raise ValueError(
                         f"class '{cs.class_name}' semester '{cs.semester}' subject '{subj.name}': "
-                        f"teacher_share_min_percent includes '{teacher}' but that teacher is not in teachers list"
+                        f"teacher_min_periods includes '{teacher}' but that teacher is not in teachers list"
                     )
-                min_periods = round(total_workload * min_percent / 100.0)
-                teacher_total = sum(
-                    occ_subj_teacher[(cs.class_name, section_idx, subj.name, teacher, d, p)]
-                    for section_idx in range(cs.num_sections)
-                    for d in range(num_days)
-                    for p in range(num_periods)
-                )
-                model.Add(teacher_total >= min_periods)
+                
+                # If a teacher has a minimum period requirement, they MUST be assigned to exactly one section
+                # (since exclusivity is active).
+                if min_periods > 0:
+                    model.Add(
+                        sum(teacher_in_subj_section[(cs.class_name, subj.name, s_idx, teacher)] for s_idx in range(cs.num_sections))
+                        == 1
+                    )
+
+                # Apply the constraint per section
+                for section_idx in range(cs.num_sections):
+                    teacher_section_total = sum(
+                        occ_subj_teacher[(cs.class_name, section_idx, subj.name, teacher, d, p)]
+                        for d in range(num_days)
+                        for p in range(num_periods)
+                    )
+                    # If exclusivity is on, a teacher is in at most one section.
+                    # We only enforce min_periods if they ARE in this section.
+                    model.Add(
+                        teacher_section_total
+                        >= min_periods * teacher_in_subj_section[(cs.class_name, subj.name, section_idx, teacher)]
+                    )
 
     # Constraint: a teacher cannot teach two classes (or two sections) at the same time
     teachers = sorted({t for cs in specs for subj in cs.subjects for t in subj.teachers})
@@ -605,11 +642,29 @@ def solve_timetable(
                     )
                     penalties_teacher_preference.append(teacher_occ)
 
+    # Soft constraint: subject day preference
+    penalties_subject_preference: List[cp_model.IntVar] = []
+    if enable_subject_preferences:
+        for cs in specs:
+            for subj in cs.subjects:
+                if not subj.preferred_days:
+                    continue
+                preferred_set = set(subj.preferred_days)
+                for d in range(num_days):
+                    if days[d] in preferred_set:
+                        continue
+                    # Penalty for each period scheduled on a non-preferred day
+                    for p in range(num_periods):
+                        penalties_subject_preference.append(occ_subj[(cs.class_name, subj.name, d, p)])
+
     # Weighted objective: prioritize subject daily start minimization, then teacher preferences.
     w_subject_daily = 10
+    w_subject_pref = 10
     w_teacher_pref = 1
     model.Minimize(
-        w_subject_daily * sum(penalties_subject_daily_starts) + w_teacher_pref * sum(penalties_teacher_preference)
+        w_subject_daily * sum(penalties_subject_daily_starts)
+        + w_subject_pref * sum(penalties_subject_preference)
+        + w_teacher_pref * sum(penalties_teacher_preference)
     )
 
     solver = cp_model.CpSolver()
@@ -687,6 +742,7 @@ def diagnose_infeasible(
         enable_placement_constraints=False,
         enable_tag_limits=False,
         enable_min_classes_per_week=False,
+        enable_subject_preferences=False,
         enable_teacher_constraints=False,
         enable_teacher_preferences=False,
     )
@@ -718,6 +774,7 @@ def diagnose_infeasible(
             enable_placement_constraints=False,
             enable_tag_limits=False,
             enable_min_classes_per_week=True,
+            enable_subject_preferences=False,
             enable_teacher_constraints=False,
             enable_teacher_preferences=False,
         )
@@ -742,6 +799,7 @@ def diagnose_infeasible(
             enable_placement_constraints=False,
             enable_tag_limits=True,
             enable_min_classes_per_week=False,
+            enable_subject_preferences=False,
             enable_teacher_constraints=False,
             enable_teacher_preferences=False,
         )
@@ -765,6 +823,7 @@ def diagnose_infeasible(
         enable_placement_constraints=True,
         enable_tag_limits=False,
         enable_min_classes_per_week=False,
+        enable_subject_preferences=False,
         enable_teacher_constraints=False,
         enable_teacher_preferences=False,
     )
@@ -1310,14 +1369,15 @@ def main() -> None:
                 name=s.name,
                 teachers=tuple(s.teachers or ([s.teacher] if s.teacher else [])),
                 teachers_required=s.teachers_required or 1,
-                teacher_share_min_percent=tuple(
-                    (tname, int(pct))
-                    for tname, pct in (getattr(s, "teacher_share_min_percent", {}) or {}).items()
+                teacher_min_periods=tuple(
+                    (tname, int(pds))
+                    for tname, pds in (getattr(s, "teacher_min_periods", {}) or {}).items()
                 ),
                 periods_per_week=s.periods_per_week,
                 min_contiguous_periods=s.min_contiguous_periods,
                 max_contiguous_periods=s.max_contiguous_periods,
                 tags=tuple(s.tags),
+                preferred_days=tuple(s.preferred_days),
                 allowed_starts=tuple((dp.day, dp.period) for dp in s.allowed_starts),
                 fixed_sessions=tuple(
                     FixedSessionSpec(

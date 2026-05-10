@@ -87,14 +87,15 @@ async def solve_timetable_endpoint(semester: str, request: TimetableInput):
                 name=s.name,
                 teachers=tuple(s.teachers),
                 teachers_required=s.teachers_required,
-                teacher_share_min_percent=tuple(
-                    (tname, int(pct))
-                    for tname, pct in (getattr(s, "teacher_share_min_percent", {}) or {}).items()
+                teacher_min_periods=tuple(
+                    (tname, int(pds))
+                    for tname, pds in (getattr(s, "teacher_min_periods", {}) or {}).items()
                 ),
                 periods_per_week=s.periods_per_week,
                 min_contiguous_periods=s.min_contiguous_periods,
                 max_contiguous_periods=s.max_contiguous_periods,
                 tags=tuple(s.tags),
+                preferred_days=tuple(s.preferred_days),
                 allowed_starts=tuple((dp.day, dp.period) for dp in s.allowed_starts),
                 fixed_sessions=tuple(
                     FixedSessionSpec(

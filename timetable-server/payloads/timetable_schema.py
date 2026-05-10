@@ -89,13 +89,14 @@ class Subject(BaseModel):
     teachers: List[str] = Field(default_factory=list)
     # Number of teachers required simultaneously per section.
     teachers_required: int = Field(default=1, ge=1)
-    # minimum share (in percent) of this subject's periods that each teacher must get.
-    # Example: {"T1": 70, "T2": 30} means T1 gets >= ceil(ppw*0.70), T2 gets >= ceil(ppw*0.30).
-    teacher_share_min_percent: Dict[str, int] = Field(default_factory=dict)
+    # minimum periods of this subject that each teacher must get (per section).
+    # Example: {"T1": 3, "T2": 2} means T1 gets >= 3 periods, T2 gets >= 2.
+    teacher_min_periods: Dict[str, int] = Field(default_factory=dict)
     periods_per_week: int
     min_contiguous_periods: int = 1
     max_contiguous_periods: int = 1
     tags: List[str] = Field(default_factory=list)
+    preferred_days: List[str] = Field(default_factory=list)
     allowed_starts: List[DayPeriod] = Field(default_factory=list)
     fixed_sessions: List[FixedSession] = Field(default_factory=list)
 
@@ -129,19 +130,19 @@ class Subject(BaseModel):
             uniq.append(t)
         return uniq
 
-    @field_validator("teacher_share_min_percent")
+    @field_validator("teacher_min_periods")
     @classmethod
-    def _teacher_share_min_percent_clean(cls, v: Dict[str, int]) -> Dict[str, int]:
+    def _teacher_min_periods_clean(cls, v: Dict[str, int]) -> Dict[str, int]:
         if v is None:
             return {}
         if not isinstance(v, dict):
-            raise ValueError("must be an object/map of teacher->percent")
+            raise ValueError("must be an object/map of teacher->periods")
         out: Dict[str, int] = {}
         for k, vv in v.items():
             if not isinstance(k, str) or not k.strip():
                 raise ValueError("keys must be non-empty teacher names")
-            if not isinstance(vv, int) or vv < 0 or vv > 100:
-                raise ValueError("values must be integers in [0,100]")
+            if not isinstance(vv, int) or vv < 0:
+                raise ValueError("values must be non-negative integers")
             out[k.strip()] = int(vv)
         return out
 
@@ -189,16 +190,20 @@ class Subject(BaseModel):
                 f"exceeds number of available teachers ({len(self.teachers)})"
             )
 
-        # Validate teacher share constraints
-        if self.teacher_share_min_percent:
+        # Validate teacher min periods constraints
+        if self.teacher_min_periods:
             # keys must be subset of teachers
             tset = set(self.teachers)
-            for t in self.teacher_share_min_percent.keys():
+            for t in self.teacher_min_periods.keys():
                 if t not in tset:
-                    raise ValueError(f"teacher_share_min_percent contains '{t}' which is not in teachers")
-            # Percent totals should not exceed 100 (avoid obvious over-constraints)
-            if sum(self.teacher_share_min_percent.values()) > 100:
-                raise ValueError("sum of teacher_share_min_percent values cannot exceed 100")
+                    raise ValueError(f"teacher_min_periods contains '{t}' which is not in teachers")
+            # Period totals should not exceed section workload (ppw * teachers_required)
+            total_section_workload = self.periods_per_week * self.teachers_required
+            if sum(self.teacher_min_periods.values()) > total_section_workload:
+                raise ValueError(
+                    f"subject '{self.name}': sum of teacher_min_periods ({sum(self.teacher_min_periods.values())}) "
+                    f"cannot exceed total section workload ({total_section_workload})"
+                )
         return self
 
 

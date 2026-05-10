@@ -38,9 +38,9 @@
               "name": "subject_I",
               "teachers": ["Teacher_A", "Teacher_B"],
               "teachers_required": 1,
-              "teacher_share_min_percent": {
-                "Teacher_A": 50,
-                "Teacher_B": 30
+              "teacher_min_periods": {
+                "Teacher_A": 2,
+                "Teacher_B": 1
               },
               "periods_per_week": 4,
               "min_contiguous_periods": 1,
